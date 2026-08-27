@@ -3,6 +3,15 @@
 .env.*
 !.env.example
 
+# === Python ===
+__pycache__/
+*.pyc
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
 # === 빌드 결과물 ===
 dist/
 build/
@@ -12,10 +21,6 @@ out/
 
 # === 의존성 ===
 node_modules/
-__pycache__/
-*.pyc
-.venv/
-venv/
 
 # === 개인 설정 ===
 .vscode/settings.json
@@ -39,10 +44,6 @@ coverage/
 .nyc_output/
 htmlcov/
 
-# === Kiro — specs와 steering은 반드시 포함 ===
-# .kiro/specs/ — Git에 포함 (추적됨)
-# .kiro/steering/ — Git에 포함 (추적됨)
-
-# Kiro 임시/캐시 파일만 제외
+# Kiro Spec과 Steering은 Git에 포함한다.
 .kiro/cache/
 .kiro/tmp/
