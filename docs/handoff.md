@@ -24,6 +24,26 @@
 
 ## 기록
 
+### 2026-08-27 — REPO-STRUCTURE
+
+- **Agent**: Codex
+- **Task**: 백엔드 코드를 `backend/` 디렉토리로 분리해 프론트 작업과 공존 가능한 저장소 구조로 정리
+- **변경 파일**:
+  - `backend/pyproject.toml`
+  - `backend/.env.example`
+  - `backend/src/*`
+  - `backend/tests/*`
+  - `backend/scripts/verify.ps1`
+  - `scripts/deploy-ec2.sh`
+  - `deploy/systemd/roompact-main-backend.service`
+  - `deploy/systemd/roompact-ai-backend.service`
+  - `.kiro/steering/structure.md`
+  - `.gitignore`
+- **테스트 결과**: PASS — `backend/scripts/verify.ps1`, `bash -n scripts/deploy-ec2.sh`
+- **남은 작업**:
+  - 프론트엔드 팀이 사용할 루트 디렉토리 구조 확정
+- **비고**: EC2 배포 경로는 유지하되 실제 Python 앱 작업 디렉토리는 `/opt/roompact-campus/backend`로 변경함.
+
 ### 2026-08-27 — TASK-P0-10
 
 - **Agent**: Codex

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 APP_DIR="${ROOMPACT_APP_DIR:-/opt/roompact-campus}"
+BACKEND_DIR="${APP_DIR}/backend"
 BRANCH="${ROOMPACT_BRANCH:-main}"
 PYTHON_BIN="${ROOMPACT_PYTHON_BIN:-python3}"
 REPO_URL="${ROOMPACT_REPO:-}"
@@ -26,6 +27,8 @@ else
   git reset --hard "origin/${BRANCH}"
 fi
 
+cd "${BACKEND_DIR}"
+
 if [ ! -d ".venv" ]; then
   echo "[deploy] creating virtualenv"
   "${PYTHON_BIN}" -m venv .venv
@@ -43,6 +46,8 @@ else
   .venv/bin/pytest
 fi
 
+cd "${APP_DIR}"
+
 if [ -d "deploy/systemd" ]; then
   echo "[deploy] installing systemd units"
   sudo bash ./scripts/install-systemd-services.sh
@@ -53,7 +58,7 @@ sudo systemctl restart roompact-main-backend.service
 sudo systemctl status roompact-main-backend.service --no-pager
 
 if systemctl list-unit-files | grep -q "^roompact-ai-backend.service"; then
-  if [ -f "${APP_DIR}/src/ai_backend/app.py" ]; then
+  if [ -f "${BACKEND_DIR}/src/ai_backend/app.py" ]; then
     echo "[deploy] restarting ai backend"
     sudo systemctl restart roompact-ai-backend.service
     sudo systemctl status roompact-ai-backend.service --no-pager
