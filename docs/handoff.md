@@ -24,6 +24,25 @@
 
 ## 기록
 
+### 2026-08-27 — TASK-P1-05
+
+- **Agent**: Codex
+- **Task**: TASK-P1-05 단일 EC2 내부 PostgreSQL 저장소 구성
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/pyproject.toml`
+  - `backend/.env.example`
+  - `backend/src/main_backend/services/storage.py`
+  - `deploy/postgres/schema.sql`
+  - `scripts/install-postgres.sh`
+  - `scripts/deploy-ec2.sh`
+- **테스트 결과**: PASS — `backend/scripts/verify.ps1`, `bash -n scripts/deploy-ec2.sh`, `bash -n scripts/install-postgres.sh`, EC2 재배포 후 공개 API 저장 확인
+- **남은 작업**:
+  - Bedrock 실사용 모델 ID 주입
+- **비고**: 운영 저장소를 EC2 내부 PostgreSQL로 전환하고, 로컬 JSON은 개발 fallback으로 유지함.
+
 ### 2026-08-27 — EC2-CONFIG
 
 - **Agent**: Codex

@@ -271,6 +271,22 @@
     - 공개 `GET /api/health` 호출 확인
     - 기존 내부 `GET http://127.0.0.1:8000/health` 유지 확인
 
+- [x] TASK-P1-05 단일 EC2 내부 PostgreSQL 저장소를 구성한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-08.2, FR-10.1, FR-10.2, FR-10.5, FR-10.6, FR-11.5, NFR-10
+  - File Scope: `backend/src/main_backend/services/*`, `backend/pyproject.toml`, `backend/.env.example`, `deploy/postgres/*`, `scripts/*`, `deploy/systemd/*`
+  - Depends on: TASK-P1-03
+  - Acceptance:
+    - 백엔드는 PostgreSQL 저장소를 선택적으로 사용할 수 있어야 한다.
+    - EC2 배포 시 PostgreSQL 설치, DB 생성, 스키마 초기화가 가능해야 한다.
+    - 메인 백엔드와 AI 백엔드는 같은 PostgreSQL을 공용 저장소로 사용해야 한다.
+    - PostgreSQL은 외부 공개 없이 EC2 내부에서만 접근 가능해야 한다.
+  - Verify:
+    - 로컬 검증 스크립트 통과
+    - PostgreSQL 설치 스크립트 문법 확인
+    - EC2 재배포 후 프로필 생성 API 저장 확인
+
 ## 작업 순서 가이드
 
 - `TASK-P0-01`과 `TASK-P0-02`로 두 서버를 먼저 띄운다.
@@ -288,3 +304,4 @@
 - Self Review: TASK-P0-12 완료. 프로필별 생활 인터뷰 저장/조회 API와 조건부 필드 검증, 프론트 공유 문서를 추가했다.
 - Self Review: TASK-P1-03 완료. 단일 EC2 기준 GitHub Actions 배포 워크플로, 원격 배포 스크립트, systemd 서비스 템플릿 추가.
 - Self Review: TASK-P1-04 완료. nginx 공개 진입점, `/api` 프록시 규칙, 프론트 기준 base URL 문서를 추가했다.
+- Self Review: TASK-P1-05 완료. PostgreSQL 저장소 백엔드, EC2 설치/초기화 스크립트, 운영 `.env` 기준 DB 설정을 추가했다.

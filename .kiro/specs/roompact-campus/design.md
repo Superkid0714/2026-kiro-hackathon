@@ -26,7 +26,7 @@
 - 런타임: AWS Lambda Python
 - 핵심 라이브러리: `networkx`
 - LLM 제공자: AWS Bedrock
-- 저장소: DynamoDB
+- 저장소: PostgreSQL (운영), 로컬 JSON (개발 fallback)
 
 ## 서비스 분리
 
@@ -71,7 +71,7 @@ fallback.py
 - AI 백엔드 엔트리포인트
 - 요청 파싱과 입력 검증 보조
 - 점수 계산, 배정 계산, 선택적 LLM 보조 흐름 오케스트레이션
-- DynamoDB 저장/조회 호출 조정
+- PostgreSQL 저장/조회 호출 조정
 - 최종 응답 직렬화
 - 오류 응답 포맷 통일
 
@@ -148,7 +148,7 @@ fallback.py
 - 일반 백엔드 서버: 프론트 요청 처리
 - AI 백엔드 서버: 매칭 및 생성형 AI 처리
 - 추론: AWS Bedrock
-- 공용 저장소: DynamoDB
+- 공용 저장소: PostgreSQL
 
 ### 역할 분리
 
@@ -156,23 +156,25 @@ fallback.py
 - 일반 백엔드는 입력/조회/응답 중계를 담당한다.
 - AI 백엔드는 점수 계산, 매칭, 선택적 AI 생성, 저장 로직을 담당한다.
 - Bedrock은 3개 생성 기능에만 관여한다.
-- DynamoDB는 두 백엔드가 공유하되, 데이터 소유 책임은 분리한다.
+- PostgreSQL은 두 백엔드가 공유하되, 데이터 소유 책임은 분리한다.
 
 ### 단일 EC2 배포 전략
 
 - 해커톤 운영 환경에서는 일반 백엔드와 AI 백엔드를 하나의 Ubuntu EC2 인스턴스에 함께 배포한다.
+- PostgreSQL도 같은 EC2 인스턴스 안에서 함께 운영한다.
 - 두 백엔드는 각각 별도 `systemd` 서비스로 실행해 재시작과 로그 확인 경계를 분리한다.
 - 외부 진입점은 `nginx`가 담당하고, 공개 API는 `http://<host>/api/...` 경로로 노출한다.
-- Bedrock과 DynamoDB는 AWS 관리형 서비스로 유지하고, EC2는 애플리케이션 프로세스 실행 계층만 담당한다.
+- Bedrock은 AWS 관리형 서비스로 유지하고, EC2는 애플리케이션과 PostgreSQL 실행 계층을 함께 담당한다.
 - GitHub Actions는 SSH로 EC2에 접속해 최신 코드를 배포하고 서비스 재시작을 수행한다.
 - 일반 백엔드는 기본적으로 `8000` 포트, AI 백엔드는 `8001` 포트를 사용하도록 가정한다.
 - `nginx`는 `80 -> /api -> main backend:8000`으로 프록시하고, AI 백엔드 `8001`은 내부 호출만 허용한다.
+- PostgreSQL은 `127.0.0.1:5432`에서만 수신하고 외부 공개하지 않는다.
 
 ### 심사 대응 포인트
 
 - `Backend Separation`: 일반 백엔드와 AI 백엔드의 책임 분리
 - `Bedrock`: 생성형 AI 사용의 명확한 적용 지점
-- `DynamoDB`: 공용 데이터 저장과 재조회 가능성
+- `PostgreSQL on EC2`: 단일 인스턴스 내 데이터 저장과 재조회 가능성
 - `Gradio`: 심사자가 바로 이해할 수 있는 프로토타입 시연 채널
 
 ## 데이터 흐름
@@ -185,7 +187,7 @@ fallback.py
 6. `handler.py`가 각 배정 쌍의 추천 이유를 코드 기반으로 조합한다.
 7. 필요 조건이 충족된 경우에만 `scenario.py`, `negotiate.py`, `pact.py`를 호출한다.
 8. 각 LLM 기능은 `llm_client.py`를 통해 Bedrock을 호출하고, 실패 시 `fallback.py`로 대체한다.
-9. AI 백엔드가 필요한 결과를 DynamoDB에 저장하고 응답을 반환한다.
+9. AI 백엔드가 필요한 결과를 PostgreSQL에 저장하고 응답을 반환한다.
 10. 일반 백엔드가 결과를 정리해 프론트엔드에 반환한다.
 
 ## 서버 연결 설계
@@ -282,7 +284,7 @@ fallback은 다음 속성을 만족해야 한다.
 - 외부 호출이 없어야 한다.
 - 최소한의 사용자 가독성을 제공해야 한다.
 
-## DynamoDB 설계
+## PostgreSQL 설계
 
 ### 저장 대상
 
@@ -299,17 +301,36 @@ fallback은 다음 속성을 만족해야 한다.
 - 일반 백엔드 소유: 학생 프로필, 생활 인터뷰
 - AI 백엔드 소유: 매칭 결과, 설명 결과, Pact 결과
 
-### 최소 필드 예시
+### 테이블 구조
 
-- `pk`: `PROFILE#<profile_id>` 또는 세션/요청 ID
-- `sk`: `PROFILE`, `INTERVIEW`, `INPUT`, `MATCH_RESULT` 등 타입 구분자
-- `pk`: 세션 또는 요청 ID
-- `created_at`
-- `updated_at`
-- `payload`
-- `status`
+- `profiles`
+  - `profile_id`
+  - `nickname`
+  - `age`
+  - `gender`
+  - `region`
+  - `move_in_period`
+  - `stay_duration_months`
+  - `created_at`
+- `profile_interviews`
+  - `profile_id`
+  - `payload`
+  - `updated_at`
+- `sessions`
+  - `session_id`
+  - `session_name`
+  - `student_count`
+  - `preset_id`
+  - `status`
+  - `payload`
+  - `created_at`
+- `match_results`
+  - `session_id`
+  - `status`
+  - `payload`
+  - `updated_at`
 
-해커톤 범위에서는 단일 테이블과 단순 키 구조를 우선한다.
+해커톤 범위에서는 단순 테이블 구조와 JSON payload 병행 저장을 우선한다.
 
 ## Lambda 응답 구조
 

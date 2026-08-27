@@ -56,6 +56,15 @@ if [ ! -f "${BACKEND_DIR}/.env" ] && [ -f "${BACKEND_DIR}/.env.example" ]; then
   cp "${BACKEND_DIR}/.env.example" "${BACKEND_DIR}/.env"
 fi
 
+set -a
+. "${BACKEND_DIR}/.env"
+set +a
+
+if [ "${ROOMPACT_STORAGE_BACKEND:-local}" = "postgres" ]; then
+  echo "[deploy] installing postgres"
+  bash ./scripts/install-postgres.sh "${APP_DIR}"
+fi
+
 if [ -d "deploy/systemd" ]; then
   echo "[deploy] installing systemd units"
   sudo bash ./scripts/install-systemd-services.sh

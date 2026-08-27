@@ -1,0 +1,33 @@
+CREATE TABLE IF NOT EXISTS profiles (
+    profile_id TEXT PRIMARY KEY,
+    nickname TEXT NOT NULL,
+    age INTEGER NOT NULL,
+    gender TEXT NOT NULL,
+    region TEXT NOT NULL,
+    move_in_period TEXT NOT NULL,
+    stay_duration_months INTEGER NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS profile_interviews (
+    profile_id TEXT PRIMARY KEY REFERENCES profiles(profile_id) ON DELETE CASCADE,
+    payload JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    session_id TEXT PRIMARY KEY,
+    session_name TEXT NOT NULL,
+    student_count INTEGER NOT NULL,
+    preset_id TEXT NOT NULL,
+    status TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS match_results (
+    session_id TEXT PRIMARY KEY REFERENCES sessions(session_id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);
