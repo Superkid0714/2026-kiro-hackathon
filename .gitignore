@@ -1,0 +1,48 @@
+# === 환경변수 ===
+.env
+.env.*
+!.env.example
+
+# === 빌드 결과물 ===
+dist/
+build/
+out/
+.next/
+*.tsbuildinfo
+
+# === 의존성 ===
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# === 개인 설정 ===
+.vscode/settings.json
+.vscode/launch.json
+.idea/
+*.swp
+*.swo
+*~
+
+# === OS 파일 ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === 로그 ===
+*.log
+logs/
+
+# === 테스트 커버리지 ===
+coverage/
+.nyc_output/
+htmlcov/
+
+# === Kiro — specs와 steering은 반드시 포함 ===
+# .kiro/specs/ — Git에 포함 (추적됨)
+# .kiro/steering/ — Git에 포함 (추적됨)
+
+# Kiro 임시/캐시 파일만 제외
+.kiro/cache/
+.kiro/tmp/
