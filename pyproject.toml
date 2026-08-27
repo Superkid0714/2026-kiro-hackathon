@@ -4,7 +4,9 @@ version = "0.1.0"
 description = "RoomPACT Campus main and AI backend services"
 requires-python = ">=3.12"
 dependencies = [
+  "boto3==1.43.81",
   "fastapi==0.118.0",
+  "networkx==3.6.1",
   "uvicorn==0.37.0",
 ]
 

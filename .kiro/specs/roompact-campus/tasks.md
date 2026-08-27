@@ -29,9 +29,9 @@
     - 기본 API 헬스체크 테스트
     - 기본 응답 구조 확인 테스트
 
-- [ ] TASK-P0-02 AI 백엔드 서버 골격과 요청 진입점을 구성한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-02 AI 백엔드 서버 골격과 요청 진입점을 구성한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-09.1, FR-09.2, FR-09.3, FR-11.1
   - File Scope: `src/ai_backend/app.py`, `src/ai_backend/handler.py`
   - Depends on: 없음
@@ -44,9 +44,9 @@
     - 배정 요청 엔드포인트 테스트
     - 응답 구조 확인 테스트
 
-- [ ] TASK-P0-03 일반 백엔드와 AI 백엔드의 연결 계약을 구현한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-03 일반 백엔드와 AI 백엔드의 연결 계약을 구현한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-11.2, FR-11.3, FR-11.4, NFR-07
   - File Scope: `src/main_backend/services/*`, `src/ai_backend/app.py`, `docs/*`
   - Depends on: TASK-P0-01, TASK-P0-02
@@ -59,9 +59,9 @@
     - 연결 실패 테스트
     - JSON 계약 일치 테스트
 
-- [ ] TASK-P0-04 결정론적 학생 쌍 점수 계산을 구현한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-04 결정론적 학생 쌍 점수 계산을 구현한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-02.1, FR-02.2, FR-02.3, FR-02.4, FR-02.5, FR-04.1, FR-04.2, FR-04.3
   - File Scope: `src/ai_backend/scoring.py`
   - Depends on: TASK-P0-02
@@ -76,9 +76,9 @@
     - 동일 입력 재현성 테스트
     - 금지 import 검사 Hook 통과
 
-- [ ] TASK-P0-05 networkx 기반 2인실 매칭을 구현한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-05 networkx 기반 2인실 매칭을 구현한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-03.1, FR-03.2, FR-03.3, FR-03.4, FR-03.5
   - File Scope: `src/ai_backend/matching.py`
   - Depends on: TASK-P0-04
@@ -93,9 +93,9 @@
     - 중복 배정 방지 테스트
     - 금지 import 검사 Hook 통과
 
-- [ ] TASK-P0-06 Bedrock 클라이언트와 결정론적 fallback을 구현한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-06 Bedrock 클라이언트와 결정론적 fallback을 구현한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-05.2, FR-05.3, FR-06.3, FR-07.3, NFR-02, NFR-03
   - File Scope: `src/ai_backend/llm_client.py`, `src/ai_backend/fallback.py`
   - Depends on: TASK-P0-02
@@ -108,9 +108,9 @@
     - fallback 출력 형식 테스트
     - LLM 예외 발생 시 상위 처리를 위한 예외 테스트
 
-- [ ] TASK-P0-07 공용 DynamoDB 저장 구조와 데이터 소유권을 구현한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-07 공용 DynamoDB 저장 구조와 데이터 소유권을 구현한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-10.1, FR-10.2, FR-10.3, FR-10.4, NFR-09
   - File Scope: `src/main_backend/services/*`, `src/ai_backend/handler.py`, `docs/*`
   - Depends on: TASK-P0-01, TASK-P0-02
@@ -123,9 +123,9 @@
     - 결과 저장 테스트
     - 공용 키 조회 테스트
 
-- [ ] TASK-P0-08 갈등 시나리오 생성 모듈을 구현한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-08 갈등 시나리오 생성 모듈을 구현한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-05.1, FR-05.2, FR-05.3, FR-05.4
   - File Scope: `src/ai_backend/scenario.py`
   - Depends on: TASK-P0-06
@@ -140,9 +140,9 @@
     - LLM 성공 시 `source: llm` 반환 테스트
     - LLM 실패 시 `source: fallback` 반환 테스트
 
-- [ ] TASK-P0-09 협상안 문장화와 Pact 생성을 구현한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-09 협상안 문장화와 Pact 생성을 구현한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-06.1, FR-06.2, FR-06.3, FR-07.1, FR-07.2, FR-07.3
   - File Scope: `src/ai_backend/negotiate.py`, `src/ai_backend/pact.py`
   - Depends on: TASK-P0-06
@@ -158,9 +158,9 @@
     - LLM 성공 시 `source: llm` 반환 테스트
     - LLM 실패 시 `source: fallback` 반환 테스트
 
-- [ ] TASK-P0-10 전체 서버 연결과 핵심 통합 테스트를 완료한다
-  - Status: READY
-  - Owner: unassigned
+- [x] TASK-P0-10 전체 서버 연결과 핵심 통합 테스트를 완료한다
+  - Status: DONE
+  - Owner: Codex
   - Requirement: FR-08.3, FR-09.3, FR-10.4, FR-11.1, FR-11.2, FR-11.3, FR-11.4, NFR-01, NFR-02, NFR-06, NFR-07, NFR-08
   - File Scope: `src/main_backend/*`, `src/ai_backend/*`
   - Depends on: TASK-P0-03, TASK-P0-05, TASK-P0-07, TASK-P0-08, TASK-P0-09
@@ -233,4 +233,5 @@
 ## 검토 코멘트
 
 - Self Review: TASK-P0-01 완료. 일반 백엔드 FastAPI 골격, 기본 세션 API, 헬스체크, 로컬 테스트 통과.
+- Self Review: TASK-P0-02~10 완료. AI 백엔드 FastAPI 진입점, 결정론적 scoring/matching, Bedrock 경계, fallback, 공용 저장소, 메인-투-AI 연결, 통합 테스트를 모두 구현했다.
 - Self Review: TASK-P1-03 완료. 단일 EC2 기준 GitHub Actions 배포 워크플로, 원격 배포 스크립트, systemd 서비스 템플릿 추가.

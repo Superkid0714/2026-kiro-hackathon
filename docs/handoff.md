@@ -24,6 +24,36 @@
 
 ## 기록
 
+### 2026-08-27 — TASK-P0-10
+
+- **Agent**: Codex
+- **Task**: TASK-P0-02 ~ TASK-P0-10 AI 백엔드, 연결 계약, 결정론적 매칭, 저장, 통합 흐름 구현
+- **변경 파일**:
+  - `.env.example`
+  - `pyproject.toml`
+  - `src/main_backend/routes/sessions.py`
+  - `src/main_backend/services/ai_backend_client.py`
+  - `src/main_backend/services/session_service.py`
+  - `src/main_backend/services/storage.py`
+  - `src/ai_backend/app.py`
+  - `src/ai_backend/handler.py`
+  - `src/ai_backend/scoring.py`
+  - `src/ai_backend/matching.py`
+  - `src/ai_backend/scenario.py`
+  - `src/ai_backend/negotiate.py`
+  - `src/ai_backend/pact.py`
+  - `src/ai_backend/llm_client.py`
+  - `src/ai_backend/fallback.py`
+  - `tests/conftest.py`
+  - `tests/ai_backend/test_ai_backend.py`
+  - `tests/main_backend/test_app.py`
+  - `.kiro/specs/roompact-campus/tasks.md`
+- **테스트 결과**: PASS — `ruff check .`, `pytest`, `scripts/verify.ps1`
+- **남은 작업**:
+  - `TASK-P1-01` 저장 시 lint+test Hook 추가
+  - `TASK-P1-02` 금지 import 검사 Hook 추가
+- **비고**: 기본 저장소는 로컬 JSON 파일이며, `ROOMPACT_STORAGE_BACKEND=dynamodb` 설정 시 DynamoDB 테이블을 사용할 수 있도록 구현함.
+
 ### 2026-08-27 — TASK-P1-03
 
 - **Agent**: Codex
