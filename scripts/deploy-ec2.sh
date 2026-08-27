@@ -27,23 +27,26 @@ else
   git reset --hard "origin/${BRANCH}"
 fi
 
-cd "${BACKEND_DIR}"
-
 if [ ! -d ".venv" ]; then
+  mkdir -p "${BACKEND_DIR}"
+fi
+
+if [ ! -d "${BACKEND_DIR}/.venv" ]; then
   echo "[deploy] creating virtualenv"
-  "${PYTHON_BIN}" -m venv .venv
+  "${PYTHON_BIN}" -m venv "${BACKEND_DIR}/.venv"
 fi
 
 echo "[deploy] installing dependencies"
-.venv/bin/pip install --upgrade pip
-.venv/bin/pip install -e .[dev]
+"${BACKEND_DIR}/.venv/bin/pip" install --upgrade pip
+"${BACKEND_DIR}/.venv/bin/pip" install -e "${BACKEND_DIR}[dev]"
 
 echo "[deploy] running verification"
+cd "${BACKEND_DIR}"
 if command -v pwsh >/dev/null 2>&1; then
   pwsh ./scripts/verify.ps1
 else
-  .venv/bin/ruff check .
-  .venv/bin/pytest
+  "${BACKEND_DIR}/.venv/bin/ruff" check .
+  "${BACKEND_DIR}/.venv/bin/pytest"
 fi
 
 cd "${APP_DIR}"
