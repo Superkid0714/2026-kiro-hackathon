@@ -1,7 +1,7 @@
 {
   "paths": {
-    "specs": ".claude/specs",
-    "steering": ".claude/steering",
+    "specs": ".kiro/specs",
+    "steering": ".kiro/steering",
     "settings": ".claude/settings"
   },
   "views": {
