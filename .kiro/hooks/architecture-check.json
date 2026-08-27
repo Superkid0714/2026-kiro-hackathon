@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Deterministic Boundary Check",
+      "trigger": "PostFileSave",
+      "matcher": "(scoring|matching)\\.py$",
+      "description": "결정 로직 모듈의 Bedrock 및 네트워크 의존성을 검사한다",
+      "action": {
+        "type": "command",
+        "command": "python scripts/architecture_check.py"
+      }
+    }
+  ]
+}

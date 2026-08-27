@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Python Quality Check",
+      "trigger": "PostFileSave",
+      "matcher": ".*\\.py$",
+      "description": "Python 파일 저장 후 Ruff와 pytest를 실행한다",
+      "action": {
+        "type": "command",
+        "command": "python scripts/verify.py"
+      }
+    }
+  ]
+}
