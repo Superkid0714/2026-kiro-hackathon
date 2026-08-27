@@ -16,6 +16,7 @@
 - 세션 매칭 실행 요청
 - 매칭 결과 조회
 - 프로필별 생활 인터뷰 저장 및 조회
+- 프로필별 캐릭터 유형 산출
 - AI 백엔드 오류를 프론트가 처리 가능한 구조로 전달
 
 ## 프론트 연동 흐름
@@ -25,6 +26,7 @@
 - 인터뷰 질문은 여러 UI 화면으로 나눠 받아도 된다.
 - 프론트는 각 화면의 답변을 최종적으로 하나의 JSON으로 합친다.
 - 마지막 제출 시 `PUT /api/profiles/{profile_id}/interview`를 한 번 호출해 전체 인터뷰를 저장한다.
+- 인터뷰 저장 응답에는 `규칙성 점수`, `공유성 점수`, `4가지 캐릭터 유형`이 함께 포함된다.
 - 저장된 인터뷰를 다시 불러와야 할 때는 `GET /api/profiles/{profile_id}/interview`를 사용한다.
 
 ## 현재 구현된 엔드포인트
@@ -141,6 +143,7 @@
   - 프로필 1건에 대한 생활 인터뷰 전체 응답을 저장한다.
   - 인터뷰는 부분 저장이 아니라 최종 제출 기준으로 전체 payload를 받는다.
   - 흡연/반려동물 관련 조건부 필드는 응답 값에 따라 필수 여부가 달라진다.
+  - 저장 시 규칙성 점수와 공유성 점수를 계산하고 `ROO`, `DUDI`, `PEE`, `MOMO` 중 하나의 캐릭터 유형을 산출한다.
 - Path Variable:
 
 | Key | Type | 비고 |
@@ -270,6 +273,17 @@
     "security_preference": "외출시",
     "absence_notice": "하루 이상"
   },
+  "character": {
+    "rule_score": 71.0,
+    "sharing_score": 39.8,
+    "type_code": "PEE",
+    "type_name": "규칙중시형",
+    "top_factors": [
+      "생활 소음에 민감합니다",
+      "조용한 시간 기준이 분명합니다",
+      "보안과 잠금 기준을 중요하게 생각합니다"
+    ]
+  },
   "updated_at": "2026-08-27T15:20:00+00:00"
 }
 ```
@@ -279,6 +293,11 @@
   - `smokes: true`이면 `smoking_type`, `smoking_place`가 필요하다.
   - `pet_ok: true`이면 `pet_preference`가 필요하다.
   - 프론트는 여러 화면에서 받은 응답을 합쳐서 최종적으로 이 요청 본문 전체를 보낸다.
+  - 캐릭터 유형 매핑:
+    - `ROO`: 함께둥글형
+    - `DUDI`: 함께정돈형
+    - `PEE`: 규칙중시형
+    - `MOMO`: 자유독립형
 
 ### `GET /profiles/{profile_id}/interview`
 
@@ -319,6 +338,17 @@
     "personal_space_ratio": "반반",
     "security_preference": "외출시",
     "absence_notice": "하루 이상"
+  },
+  "character": {
+    "rule_score": 71.0,
+    "sharing_score": 39.8,
+    "type_code": "PEE",
+    "type_name": "규칙중시형",
+    "top_factors": [
+      "생활 소음에 민감합니다",
+      "조용한 시간 기준이 분명합니다",
+      "보안과 잠금 기준을 중요하게 생각합니다"
+    ]
   },
   "updated_at": "2026-08-27T15:20:00+00:00"
 }

@@ -110,6 +110,15 @@ def test_save_profile_interview_returns_expected_shape() -> None:
     assert body["interview"]["wake_up_time"] == "07:00"
     assert body["interview"]["smoking_type"] is None
     assert body["interview"]["pet_preference"] == "고양이"
+    assert body["character"]["type_code"] in {"ROO", "DUDI", "PEE", "MOMO"}
+    assert body["character"]["type_name"] in {
+        "함께둥글형",
+        "함께정돈형",
+        "규칙중시형",
+        "자유독립형",
+    }
+    assert isinstance(body["character"]["rule_score"], float)
+    assert isinstance(body["character"]["sharing_score"], float)
 
 
 def test_get_profile_interview_returns_saved_interview() -> None:
@@ -165,6 +174,8 @@ def test_get_profile_interview_returns_saved_interview() -> None:
     assert body["interview"]["smoking_type"] == "전자담배"
     assert body["interview"]["smoking_place"] == "밖"
     assert body["interview"]["pet_preference"] is None
+    assert body["character"]["type_code"] in {"ROO", "DUDI", "PEE", "MOMO"}
+    assert body["character"]["top_factors"]
 
 
 def test_save_profile_interview_unknown_profile_returns_not_found() -> None:

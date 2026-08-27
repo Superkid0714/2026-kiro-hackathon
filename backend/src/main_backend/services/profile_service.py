@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
+from main_backend.services.character_classifier import classify_character
 from main_backend.services.storage import get_storage_backend
 
 
@@ -35,9 +36,11 @@ class ProfileService:
         if profile is None:
             return None
 
+        character = classify_character(payload)
         interview = {
             "profile_id": profile_id,
             "interview": deepcopy(payload),
+            "character": character,
             "updated_at": datetime.now(UTC).isoformat(),
         }
         get_storage_backend().save_profile_interview(profile_id, interview)
@@ -49,7 +52,13 @@ class ProfileService:
             return None
 
         interview = get_storage_backend().get_profile_interview(profile_id)
-        return deepcopy(interview) if interview is not None else None
+        if interview is None:
+            return None
+
+        normalized = deepcopy(interview)
+        if "character" not in normalized:
+            normalized["character"] = classify_character(normalized["interview"])
+        return normalized
 
 
 profile_service = ProfileService()

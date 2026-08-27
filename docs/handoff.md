@@ -24,6 +24,23 @@
 
 ## 기록
 
+### 2026-08-27 — TASK-P0-13
+
+- **Agent**: Codex
+- **Task**: TASK-P0-13 인터뷰 응답 기반 캐릭터 분류 산출 추가
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/main_backend/services/character_classifier.py`
+  - `backend/src/main_backend/services/profile_service.py`
+  - `backend/tests/main_backend/test_profiles.py`
+  - `docs/api/main-backend.md`
+- **테스트 결과**: PASS — `backend/scripts/verify.ps1`, `backend/scripts/export_openapi.py`
+- **남은 작업**:
+  - 캐릭터 분류 결과를 향후 매칭 설명 로직과 연결
+- **비고**: 인터뷰 저장/조회 응답에 `rule_score`, `sharing_score`, `type_code`, `type_name`, `top_factors`를 함께 반환함.
+
 ### 2026-08-27 — TASK-P1-05
 
 - **Agent**: Codex
