@@ -15,6 +15,7 @@
 - 세션 조회
 - 세션 매칭 실행 요청
 - 매칭 결과 조회
+- 프로필별 생활 인터뷰 저장 및 조회
 - AI 백엔드 오류를 프론트가 처리 가능한 구조로 전달
 
 ## 현재 구현된 엔드포인트
@@ -119,6 +120,131 @@
 ```json
 {
   "detail": "profile_not_found"
+}
+```
+
+### `PUT /profiles/{profile_id}/interview`
+
+- 용도: 프로필별 생활 인터뷰 응답 저장
+- 공개 호출 예시: `PUT /api/profiles/{profile_id}/interview`
+- 요청:
+
+```json
+{
+  "wake_up_time": "07:00",
+  "sleep_time": "23:30",
+  "noise_sensitive": true,
+  "quiet_hours_start": "22:00",
+  "cleaning_frequency": "3",
+  "dishes_deadline": "그날 이내에",
+  "guest_frequency": "1",
+  "smokes": false,
+  "drinking_frequency": "2",
+  "home_stay_frequency": "5",
+  "meal_preference": "직접",
+  "home_activity_frequency": "매일",
+  "supplies_sharing": "일부 공유",
+  "summer_temperature": 24,
+  "winter_temperature": 21,
+  "pet_ok": true,
+  "pet_preference": "고양이",
+  "conflict_resolution": "즉시 대면",
+  "shared_cost_rule": "반반",
+  "personal_space_access": "노크 혹은 허락",
+  "personal_space_ratio": "반반",
+  "security_preference": "외출시",
+  "absence_notice": "하루 이상"
+}
+```
+
+- 성공 응답:
+
+```json
+{
+  "status": "saved",
+  "profile_id": "profile-a1b2c3d4",
+  "interview": {
+    "wake_up_time": "07:00",
+    "sleep_time": "23:30",
+    "noise_sensitive": true,
+    "quiet_hours_start": "22:00",
+    "cleaning_frequency": "3",
+    "dishes_deadline": "그날 이내에",
+    "guest_frequency": "1",
+    "smokes": false,
+    "smoking_type": null,
+    "smoking_place": null,
+    "drinking_frequency": "2",
+    "home_stay_frequency": "5",
+    "meal_preference": "직접",
+    "home_activity_frequency": "매일",
+    "supplies_sharing": "일부 공유",
+    "summer_temperature": 24,
+    "winter_temperature": 21,
+    "pet_ok": true,
+    "pet_preference": "고양이",
+    "conflict_resolution": "즉시 대면",
+    "shared_cost_rule": "반반",
+    "personal_space_access": "노크 혹은 허락",
+    "personal_space_ratio": "반반",
+    "security_preference": "외출시",
+    "absence_notice": "하루 이상"
+  },
+  "updated_at": "2026-08-27T15:20:00+00:00"
+}
+```
+
+- 비고:
+  - 시간 입력은 `HH:MM` 24시간 형식이며 `10분` 단위만 허용한다.
+  - `smokes: true`이면 `smoking_type`, `smoking_place`가 필요하다.
+  - `pet_ok: true`이면 `pet_preference`가 필요하다.
+
+### `GET /profiles/{profile_id}/interview`
+
+- 용도: 프로필별 생활 인터뷰 응답 조회
+- 공개 호출 예시: `GET /api/profiles/{profile_id}/interview`
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "profile_id": "profile-a1b2c3d4",
+  "interview": {
+    "wake_up_time": "07:00",
+    "sleep_time": "23:30",
+    "noise_sensitive": true,
+    "quiet_hours_start": "22:00",
+    "cleaning_frequency": "3",
+    "dishes_deadline": "그날 이내에",
+    "guest_frequency": "1",
+    "smokes": false,
+    "smoking_type": null,
+    "smoking_place": null,
+    "drinking_frequency": "2",
+    "home_stay_frequency": "5",
+    "meal_preference": "직접",
+    "home_activity_frequency": "매일",
+    "supplies_sharing": "일부 공유",
+    "summer_temperature": 24,
+    "winter_temperature": 21,
+    "pet_ok": true,
+    "pet_preference": "고양이",
+    "conflict_resolution": "즉시 대면",
+    "shared_cost_rule": "반반",
+    "personal_space_access": "노크 혹은 허락",
+    "personal_space_ratio": "반반",
+    "security_preference": "외출시",
+    "absence_notice": "하루 이상"
+  },
+  "updated_at": "2026-08-27T15:20:00+00:00"
+}
+```
+
+- 실패 응답:
+
+```json
+{
+  "detail": "profile_interview_not_found"
 }
 ```
 

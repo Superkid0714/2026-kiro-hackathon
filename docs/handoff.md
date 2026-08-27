@@ -24,6 +24,24 @@
 
 ## 기록
 
+### 2026-08-27 — TASK-P0-12
+
+- **Agent**: Codex
+- **Task**: TASK-P0-12 메인 백엔드 프로필 인터뷰 저장/조회 API 추가
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/main_backend/routes/profiles.py`
+  - `backend/src/main_backend/services/profile_service.py`
+  - `backend/src/main_backend/services/storage.py`
+  - `backend/tests/main_backend/test_profiles.py`
+  - `docs/api/main-backend.md`
+- **테스트 결과**: PASS — `backend/scripts/verify.ps1`, `backend/scripts/export_openapi.py`
+- **남은 작업**:
+  - 프론트 입력 폼과 실제 필드명 매핑 확정
+- **비고**: 인터뷰는 프로필 하위 리소스로 저장하며, 시간 입력은 `10분` 단위 형식 검증을 적용함.
+
 ### 2026-08-27 — TASK-P1-04
 
 - **Agent**: Codex

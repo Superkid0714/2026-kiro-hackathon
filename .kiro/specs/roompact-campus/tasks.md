@@ -192,6 +192,23 @@
     - 프로필 단건 조회 테스트
     - API 문서 갱신 확인
 
+- [x] TASK-P0-12 메인 백엔드 프로필 인터뷰 저장 API를 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.5, FR-08.6, FR-10.5
+  - File Scope: `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`, `backend/tests/main_backend/*`, `docs/api/*`
+  - Depends on: TASK-P0-11
+  - Acceptance:
+    - 메인 백엔드는 프로필별 생활 인터뷰 응답 저장 API를 제공해야 한다.
+    - 메인 백엔드는 프로필별 생활 인터뷰 응답 조회 API를 제공해야 한다.
+    - 흡연/반려동물 관련 조건부 입력은 구조화된 필드로 저장되어야 한다.
+    - 프론트가 사용할 수 있는 요청/응답 문서가 갱신되어야 한다.
+  - Verify:
+    - 인터뷰 저장 테스트
+    - 인터뷰 조회 테스트
+    - 미존재 프로필 404 테스트
+    - API 문서 갱신 확인
+
 ## P1
 
 - [ ] TASK-P1-01 저장 시 lint와 test를 실행하는 Hook을 추가한다
@@ -268,5 +285,6 @@
 - Self Review: TASK-P0-01 완료. 일반 백엔드 FastAPI 골격, 기본 세션 API, 헬스체크, 로컬 테스트 통과.
 - Self Review: TASK-P0-02~10 완료. AI 백엔드 FastAPI 진입점, 결정론적 scoring/matching, Bedrock 경계, fallback, 공용 저장소, 메인-투-AI 연결, 통합 테스트를 모두 구현했다.
 - Self Review: TASK-P0-11 완료. 메인 백엔드 프로필 생성/목록/조회 API와 프론트 공유 문서를 추가했다.
+- Self Review: TASK-P0-12 완료. 프로필별 생활 인터뷰 저장/조회 API와 조건부 필드 검증, 프론트 공유 문서를 추가했다.
 - Self Review: TASK-P1-03 완료. 단일 EC2 기준 GitHub Actions 배포 워크플로, 원격 배포 스크립트, systemd 서비스 템플릿 추가.
 - Self Review: TASK-P1-04 완료. nginx 공개 진입점, `/api` 프록시 규칙, 프론트 기준 base URL 문서를 추가했다.

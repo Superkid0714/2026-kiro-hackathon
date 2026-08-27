@@ -18,6 +18,10 @@ class StorageBackend(Protocol):
 
     def get_profile(self, profile_id: str) -> dict[str, Any] | None: ...
 
+    def save_profile_interview(self, profile_id: str, interview: dict[str, Any]) -> None: ...
+
+    def get_profile_interview(self, profile_id: str) -> dict[str, Any] | None: ...
+
     def save_session(self, session: dict[str, Any]) -> None: ...
 
     def get_session(self, session_id: str) -> dict[str, Any] | None: ...
@@ -60,6 +64,18 @@ class LocalJsonStorage:
             profile = payload["profiles"].get(profile_id)
             return deepcopy(profile) if profile is not None else None
 
+    def save_profile_interview(self, profile_id: str, interview: dict[str, Any]) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["interviews"][profile_id] = deepcopy(interview)
+            self._write(payload)
+
+    def get_profile_interview(self, profile_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            interview = payload["interviews"].get(profile_id)
+            return deepcopy(interview) if interview is not None else None
+
     def get_session(self, session_id: str) -> dict[str, Any] | None:
         with self._lock:
             payload = self._read()
@@ -82,13 +98,14 @@ class LocalJsonStorage:
 
     def _read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists():
-            return {"profiles": {}, "sessions": {}, "results": {}}
+            return {"profiles": {}, "interviews": {}, "sessions": {}, "results": {}}
 
         with self.path.open("r", encoding="utf-8") as handle:
             content = json.load(handle)
 
         return {
             "profiles": content.get("profiles", {}),
+            "interviews": content.get("interviews", {}),
             "sessions": content.get("sessions", {}),
             "results": content.get("results", {}),
         }
@@ -139,6 +156,21 @@ class DynamoDbStorage:
 
     def get_profile(self, profile_id: str) -> dict[str, Any] | None:
         response = self._table.get_item(Key={"pk": f"PROFILE#{profile_id}", "sk": "PROFILE"})
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
+
+    def save_profile_interview(self, profile_id: str, interview: dict[str, Any]) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"PROFILE#{profile_id}",
+                "INTERVIEW",
+                interview,
+                "saved",
+            )
+        )
+
+    def get_profile_interview(self, profile_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(Key={"pk": f"PROFILE#{profile_id}", "sk": "INTERVIEW"})
         item = response.get("Item")
         return deepcopy(item["payload"]) if item is not None else None
 

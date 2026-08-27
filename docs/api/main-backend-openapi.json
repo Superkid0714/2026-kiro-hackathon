@@ -149,6 +149,102 @@
         }
       }
     },
+    "/profiles/{profile_id}/interview": {
+      "put": {
+        "tags": [
+          "profiles"
+        ],
+        "summary": "Save Profile Interview",
+        "operationId": "save_profile_interview_profiles__profile_id__interview_put",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProfileInterviewRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Save Profile Interview Profiles  Profile Id  Interview Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "profiles"
+        ],
+        "summary": "Get Profile Interview",
+        "operationId": "get_profile_interview_profiles__profile_id__interview_get",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Profile Interview Profiles  Profile Id  Interview Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sessions": {
       "post": {
         "tags": [
@@ -385,6 +481,262 @@
           "stay_duration_months"
         ],
         "title": "ProfileCreateRequest"
+      },
+      "ProfileInterviewRequest": {
+        "properties": {
+          "wake_up_time": {
+            "type": "string",
+            "pattern": "^(?:[01]\\d|2[0-3]):(?:00|10|20|30|40|50)$",
+            "title": "Wake Up Time"
+          },
+          "sleep_time": {
+            "type": "string",
+            "pattern": "^(?:[01]\\d|2[0-3]):(?:00|10|20|30|40|50)$",
+            "title": "Sleep Time"
+          },
+          "noise_sensitive": {
+            "type": "boolean",
+            "title": "Noise Sensitive"
+          },
+          "quiet_hours_start": {
+            "type": "string",
+            "pattern": "^(?:[01]\\d|2[0-3]):(?:00|10|20|30|40|50)$",
+            "title": "Quiet Hours Start"
+          },
+          "cleaning_frequency": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "매일"
+            ],
+            "title": "Cleaning Frequency"
+          },
+          "dishes_deadline": {
+            "type": "string",
+            "enum": [
+              "바로",
+              "그날 이내에",
+              "다음날 아침"
+            ],
+            "title": "Dishes Deadline"
+          },
+          "guest_frequency": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "매일"
+            ],
+            "title": "Guest Frequency"
+          },
+          "smokes": {
+            "type": "boolean",
+            "title": "Smokes"
+          },
+          "smoking_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30,
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smoking Type"
+          },
+          "smoking_place": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "밖",
+                  "베란다",
+                  "집 안"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Smoking Place"
+          },
+          "drinking_frequency": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "매일"
+            ],
+            "title": "Drinking Frequency"
+          },
+          "home_stay_frequency": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "매일"
+            ],
+            "title": "Home Stay Frequency"
+          },
+          "meal_preference": {
+            "type": "string",
+            "enum": [
+              "배달",
+              "직접"
+            ],
+            "title": "Meal Preference"
+          },
+          "home_activity_frequency": {
+            "type": "string",
+            "enum": [
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "매일"
+            ],
+            "title": "Home Activity Frequency"
+          },
+          "supplies_sharing": {
+            "type": "string",
+            "enum": [
+              "공동구매",
+              "각자",
+              "일부 공유"
+            ],
+            "title": "Supplies Sharing"
+          },
+          "summer_temperature": {
+            "type": "integer",
+            "maximum": 35.0,
+            "minimum": 16.0,
+            "title": "Summer Temperature"
+          },
+          "winter_temperature": {
+            "type": "integer",
+            "maximum": 30.0,
+            "minimum": 10.0,
+            "title": "Winter Temperature"
+          },
+          "pet_ok": {
+            "type": "boolean",
+            "title": "Pet Ok"
+          },
+          "pet_preference": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "고양이",
+                  "강아지",
+                  "둘 다"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pet Preference"
+          },
+          "conflict_resolution": {
+            "type": "string",
+            "enum": [
+              "즉시 대면",
+              "모아서 대면"
+            ],
+            "title": "Conflict Resolution"
+          },
+          "shared_cost_rule": {
+            "type": "string",
+            "enum": [
+              "반반",
+              "거주 시간 비율"
+            ],
+            "title": "Shared Cost Rule"
+          },
+          "personal_space_access": {
+            "type": "string",
+            "enum": [
+              "자유롭게",
+              "노크 혹은 허락",
+              "불가능"
+            ],
+            "title": "Personal Space Access"
+          },
+          "personal_space_ratio": {
+            "type": "string",
+            "enum": [
+              "반반",
+              "필요한 만큼"
+            ],
+            "title": "Personal Space Ratio"
+          },
+          "security_preference": {
+            "type": "string",
+            "enum": [
+              "항시 잠금",
+              "외출시",
+              "상관없음"
+            ],
+            "title": "Security Preference"
+          },
+          "absence_notice": {
+            "type": "string",
+            "enum": [
+              "항상",
+              "하루 이상",
+              "필요 없음"
+            ],
+            "title": "Absence Notice"
+          }
+        },
+        "type": "object",
+        "required": [
+          "wake_up_time",
+          "sleep_time",
+          "noise_sensitive",
+          "quiet_hours_start",
+          "cleaning_frequency",
+          "dishes_deadline",
+          "guest_frequency",
+          "smokes",
+          "drinking_frequency",
+          "home_stay_frequency",
+          "meal_preference",
+          "home_activity_frequency",
+          "supplies_sharing",
+          "summer_temperature",
+          "winter_temperature",
+          "pet_ok",
+          "conflict_resolution",
+          "shared_cost_rule",
+          "personal_space_access",
+          "personal_space_ratio",
+          "security_preference",
+          "absence_notice"
+        ],
+        "title": "ProfileInterviewRequest"
       },
       "SessionCreateRequest": {
         "properties": {
