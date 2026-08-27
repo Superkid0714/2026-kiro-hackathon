@@ -27,6 +27,8 @@
 - 프론트는 각 화면의 답변을 최종적으로 하나의 JSON으로 합친다.
 - 마지막 제출 시 `PUT /api/profiles/{profile_id}/interview`를 한 번 호출해 전체 인터뷰를 저장한다.
 - 인터뷰 저장 응답에는 `규칙성 점수`, `공유성 점수`, `4가지 캐릭터 유형`이 함께 포함된다.
+- 인터뷰 저장이 끝나면 추천 후보가 내부적으로 자동 계산된다.
+- 추천 후보 확인은 `GET /api/profiles/{profile_id}/recommendations`로 한다.
 - 저장된 인터뷰를 다시 불러와야 할 때는 `GET /api/profiles/{profile_id}/interview`를 사용한다.
 
 ## 현재 구현된 엔드포인트
@@ -48,6 +50,29 @@
 
 - 용도: 기본 학생 프로필 생성
 - 공개 호출 예시: `POST /api/profiles`
+- 기능명세:
+  - 학생의 기본 프로필을 생성한다.
+  - 닉네임, 나이, 성별, 지역, 입주 예정 시기, 거주 예정 기간을 저장한다.
+  - `region`은 현재 단계에서는 `시/도 단위 선택값`으로 받는다.
+  - 자유 문장 주소 전체를 받는 구조가 아니라, 프론트가 선택 UI에서 고른 지역명을 그대로 전달하는 구조를 기준으로 한다.
+  - 생성 후 서버가 발급한 `profile_id`를 반환한다.
+- Path Variable:
+
+```text
+없음
+```
+
+- Query String:
+
+```text
+없음
+```
+
+- Request Header:
+
+| Key | Value | 비고 |
+| --- | --- | --- |
+| Content-Type | application/json | JSON 요청 |
 - 요청:
 
 ```json
@@ -55,11 +80,22 @@
   "nickname": "민수",
   "age": 22,
   "gender": "male",
-  "region": "Gwangju",
+  "region": "광주광역시",
   "move_in_period": "2026-09",
   "stay_duration_months": 6
 }
 ```
+
+- Request Body 필드:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| nickname | String | 사용자 닉네임 |
+| age | Number | 나이 |
+| gender | String | 성별 |
+| region | String | 현재 단계에서는 시/도 단위 선택값 사용. 예: `서울특별시`, `광주광역시`, `전라남도`, `제주특별자치도` |
+| move_in_period | String | 입주 예정 시기, 예: `2026-09` |
+| stay_duration_months | Number | 거주 예정 개월 수 |
 
 - 성공 응답:
 
@@ -71,7 +107,7 @@
     "nickname": "민수",
     "age": 22,
     "gender": "male",
-    "region": "Gwangju",
+    "region": "광주광역시",
     "move_in_period": "2026-09",
     "stay_duration_months": 6,
     "created_at": "2026-08-27T13:30:00+00:00"
@@ -94,7 +130,7 @@
       "nickname": "민수",
       "age": 22,
       "gender": "male",
-      "region": "Gwangju",
+      "region": "광주광역시",
       "move_in_period": "2026-09",
       "stay_duration_months": 6,
       "created_at": "2026-08-27T13:30:00+00:00"
@@ -118,7 +154,7 @@
     "nickname": "민수",
     "age": 22,
     "gender": "male",
-    "region": "Gwangju",
+    "region": "광주광역시",
     "move_in_period": "2026-09",
     "stay_duration_months": 6,
     "created_at": "2026-08-27T13:30:00+00:00"
@@ -144,6 +180,7 @@
   - 인터뷰는 부분 저장이 아니라 최종 제출 기준으로 전체 payload를 받는다.
   - 흡연/반려동물 관련 조건부 필드는 응답 값에 따라 필수 여부가 달라진다.
   - 저장 시 규칙성 점수와 공유성 점수를 계산하고 `ROO`, `DUDI`, `PEE`, `MOMO` 중 하나의 캐릭터 유형을 산출한다.
+  - 저장 완료 후 현재 인터뷰 제출자 전체를 기준으로 추천 후보를 자동 갱신한다.
 - Path Variable:
 
 | Key | Type | 비고 |
@@ -284,6 +321,8 @@
       "문과 창문 잠금처럼 기본적인 안전 기준을 중요하게 여겨요"
     ]
   },
+  "recommendations": [],
+  "recommended_at": "2026-08-28T01:10:00+00:00",
   "updated_at": "2026-08-27T15:20:00+00:00"
 }
 ```
@@ -362,10 +401,60 @@
 }
 ```
 
+### `GET /profiles/{profile_id}/recommendations`
+
+- 용도: 프로필별 자동 추천 후보 조회
+- 공개 호출 예시: `GET /api/profiles/{profile_id}/recommendations`
+- 기능명세:
+  - 인터뷰 제출이 완료된 프로필의 추천 후보를 조회한다.
+  - 새 사용자가 들어오거나 기존 사용자가 인터뷰를 수정하면 추천 목록이 자동 갱신된다.
+  - 추천은 확정 배정이 아니라 현재 시점의 후보 제안이다.
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "profile_id": "profile-a1b2c3d4",
+  "recommendations": [
+    {
+      "profile_id": "profile-b2c3d4e5",
+      "student_id": "profile-b2c3d4e5",
+      "nickname": "서연",
+      "gender": "female",
+      "region": "광주광역시",
+      "move_in_period": "2026-09",
+      "stay_duration_months": 7,
+      "score": 91,
+      "type_code": "PEE",
+      "type_name": "규칙중시형",
+      "reasons": [
+        "취침 시간대가 비슷합니다",
+        "조용히 지내고 싶은 시간대가 잘 맞습니다",
+        "개인 공간 출입 기준이 비슷합니다"
+      ],
+      "conflict_summary": []
+    }
+  ],
+  "recommended_at": "2026-08-28T01:10:00+00:00"
+}
+```
+
+- 실패 응답:
+
+```json
+{
+  "detail": "profile_recommendations_not_found"
+}
+```
+
 ### `POST /sessions`
 
 - 용도: 학생 설문 세션 생성
 - 공개 호출 예시: `POST /api/sessions`
+- 기능명세:
+  - 매칭 대상 학생 목록을 세션으로 저장한다.
+  - 기존 `lifestyle`, `required_rules`, `preferences` 기반 요청을 계속 지원한다.
+  - `interview`, `character`, `region`, `move_in_period`, `stay_duration_months`를 함께 보내면 AI 백엔드가 더 정밀한 인터뷰 기반 매칭 점수를 계산한다.
 - 요청:
 
 ```json
@@ -380,6 +469,9 @@
         "noise": "low",
         "cleanliness": "high"
       },
+      "region": "광주광역시",
+      "move_in_period": "2026-09",
+      "stay_duration_months": 6,
       "required_rules": [
         "sleep=early"
       ],
@@ -387,6 +479,37 @@
         "sleep": 4,
         "noise": 2,
         "cleanliness": 3
+      },
+      "interview": {
+        "wake_up_time": "07:00",
+        "sleep_time": "23:30",
+        "noise_sensitive": true,
+        "quiet_hours_start": "22:00",
+        "cleaning_frequency": "3",
+        "dishes_deadline": "그날 이내에",
+        "guest_frequency": "1",
+        "smokes": false,
+        "drinking_frequency": "2",
+        "home_stay_frequency": "5",
+        "meal_preference": "직접",
+        "home_activity_frequency": "매일",
+        "supplies_sharing": "일부 공유",
+        "summer_temperature": 24,
+        "winter_temperature": 21,
+        "pet_ok": true,
+        "pet_preference": "고양이",
+        "conflict_resolution": "즉시 대면",
+        "shared_cost_rule": "반반",
+        "personal_space_access": "노크 혹은 허락",
+        "personal_space_ratio": "반반",
+        "security_preference": "외출시",
+        "absence_notice": "하루 이상"
+      },
+      "character": {
+        "rule_score": 71.0,
+        "sharing_score": 39.8,
+        "type_code": "PEE",
+        "type_name": "규칙중시형"
       }
     },
     {
@@ -396,6 +519,9 @@
         "noise": "high",
         "cleanliness": "medium"
       },
+      "region": "광주광역시",
+      "move_in_period": "2026-09",
+      "stay_duration_months": 7,
       "required_rules": [],
       "preferences": {
         "sleep": 4,
@@ -406,6 +532,23 @@
   ]
 }
 ```
+
+- 학생 payload 필드:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| student_id | String | 세션 내부 학생 식별자 |
+| profile_id | String | 선택 필드. 프로필 API와 연결할 때 사용 |
+| nickname | String | 선택 필드 |
+| gender | String | 선택 필드 |
+| region | String | 선택 필드. 시/도 단위 희망 지역 |
+| move_in_period | String | 선택 필드. 예: `2026-09` |
+| stay_duration_months | Number | 선택 필드. 거주 예정 개월 수 |
+| lifestyle | Object | 기존 데모용 생활 패턴 요약 |
+| required_rules | Array[String] | 필수 조건 |
+| preferences | Object | 기존 가중치 기반 선호값 |
+| interview | Object | 선택 필드. 22문항 생활 인터뷰 전체 응답 |
+| character | Object | 선택 필드. 인터뷰 기반 캐릭터 분류 결과 |
 
 - 성공 응답:
 
@@ -536,10 +679,11 @@
 
 1. 필요하면 `POST /profiles`로 학생 기본 프로필 저장
 2. 프로필 기반 입력을 조합해 `POST /sessions`로 전송
-3. 응답에서 `session.session_id` 확보
-4. `POST /sessions/{session_id}/match` 호출
-5. 결과 화면은 `matches[]`를 바로 렌더링
-6. 재조회가 필요하면 `GET /sessions/{session_id}/result` 호출
+3. 가능하면 `region`, `move_in_period`, `stay_duration_months`, `interview`, `character`를 함께 넣어 인터뷰 기반 매칭을 사용
+4. 응답에서 `session.session_id` 확보
+5. `POST /sessions/{session_id}/match` 호출
+6. 결과 화면은 `matches[]`를 바로 렌더링
+7. 재조회가 필요하면 `GET /sessions/{session_id}/result` 호출
 
 ## 프론트가 우선 렌더링하면 되는 필드
 
@@ -574,3 +718,4 @@
 - AI 백엔드 포트: `8001`
 - EC2에서는 메인 백엔드만 외부 공개하고 AI 백엔드는 내부 호출용으로 두는 구성을 권장한다.
 - OpenAPI JSON은 `backend/scripts/export_openapi.py`로 갱신할 수 있다.
+- `region`은 현재 `시/도 단위 문자열`로 저장한다. 구/군 단위 세분화와 지도 API 연동은 추후 확장 범위다.

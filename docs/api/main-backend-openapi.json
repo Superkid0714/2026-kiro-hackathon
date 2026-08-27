@@ -245,6 +245,50 @@
         }
       }
     },
+    "/profiles/{profile_id}/recommendations": {
+      "get": {
+        "tags": [
+          "profiles"
+        ],
+        "summary": "Get Profile Recommendations",
+        "operationId": "get_profile_recommendations_profiles__profile_id__recommendations_get",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Profile Recommendations Profiles  Profile Id  Recommendations Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sessions": {
       "post": {
         "tags": [
@@ -774,6 +818,72 @@
             "minLength": 1,
             "title": "Student Id"
           },
+          "profile_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Id"
+          },
+          "nickname": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nickname"
+          },
+          "gender": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Gender"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "move_in_period": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Move In Period"
+          },
+          "stay_duration_months": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stay Duration Months"
+          },
           "lifestyle": {
             "additionalProperties": {
               "type": "string"
@@ -794,6 +904,16 @@
             },
             "type": "object",
             "title": "Preferences"
+          },
+          "interview": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Interview"
+          },
+          "character": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Character"
           }
         },
         "type": "object",
@@ -825,13 +945,6 @@
           "type": {
             "type": "string",
             "title": "Error Type"
-          },
-          "input": {
-            "title": "Input"
-          },
-          "ctx": {
-            "type": "object",
-            "title": "Context"
           }
         },
         "type": "object",

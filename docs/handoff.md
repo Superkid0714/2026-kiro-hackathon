@@ -24,6 +24,47 @@
 
 ## 기록
 
+### 2026-08-28 — TASK-P1-07
+
+- **Agent**: Codex
+- **Task**: TASK-P1-07 인터뷰 제출 기반 자동 추천 후보 시스템 추가
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/main_backend/routes/profiles.py`
+  - `backend/src/main_backend/services/profile_service.py`
+  - `backend/src/main_backend/services/storage.py`
+  - `backend/tests/main_backend/test_profiles.py`
+  - `deploy/postgres/schema.sql`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+- **테스트 결과**: PASS — `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`, `.\.venv\Scripts\python.exe scripts/export_openapi.py`
+- **남은 작업**:
+  - 프론트가 추천 카드 UI에서 `reasons`와 `conflict_summary`를 어떻게 노출할지 확정
+  - 운영 EC2 배포 시 PostgreSQL에 `profile_recommendations` 테이블 생성 반영
+- **비고**: 인터뷰 저장 시 추천 후보를 자동 계산하며, 신규 제출자 저장 시 기존 제출자 추천 목록도 함께 갱신되도록 구현함. 추천 후보는 `score >= 70` 상위 3건만 유지함.
+
+### 2026-08-27 — TASK-P1-06
+
+- **Agent**: Codex
+- **Task**: TASK-P1-06 인터뷰 및 캐릭터 기반 매칭 점수 계산 고도화
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/ai_backend/app.py`
+  - `backend/src/ai_backend/handler.py`
+  - `backend/src/ai_backend/scoring.py`
+  - `backend/src/main_backend/routes/sessions.py`
+  - `backend/tests/ai_backend/test_ai_backend.py`
+  - `backend/tests/main_backend/test_app.py`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+- **테스트 결과**: PASS — `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`, `.\.venv\Scripts\python.exe scripts/export_openapi.py`
+- **남은 작업**:
+  - 저장된 프로필과 인터뷰를 기준으로 세션 payload를 자동 조립하는 API 추가 여부 검토
+  - 매칭 결과 설명 문구를 프론트 UX에 맞게 다듬기
+- **비고**: 기존 `lifestyle/preferences` 입력은 유지하고, `interview`, `character`, `region`, `move_in_period`, `stay_duration_months`가 포함되면 인터뷰 기반 정밀 매칭을 우선 사용하도록 확장함.
+
 ### 2026-08-27 — TASK-P0-13
 
 - **Agent**: Codex

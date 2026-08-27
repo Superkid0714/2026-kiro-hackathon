@@ -304,6 +304,40 @@
     - PostgreSQL 설치 스크립트 문법 확인
     - EC2 재배포 후 프로필 생성 API 저장 확인
 
+- [x] TASK-P1-06 인터뷰 및 캐릭터 기반 매칭 점수 계산을 고도화한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-02.1, FR-02.3, FR-02.4, FR-03.5, FR-04.1, FR-04.2, FR-08.3, FR-09.3
+  - File Scope: `backend/src/ai_backend/*`, `backend/src/main_backend/routes/*`, `backend/tests/*`, `docs/api/*`
+  - Depends on: TASK-P0-13
+  - Acceptance:
+    - AI 백엔드는 기존 `lifestyle/preferences` 입력을 유지하면서 `interview`, `character`, 프로필 메타데이터가 있을 때 더 정밀한 호환 점수를 계산해야 한다.
+    - 캐릭터 유형은 보조 점수로만 반영하고, 실제 매칭 점수는 인터뷰 문항과 프로필 메타데이터를 우선 반영해야 한다.
+    - 추천 이유와 갈등 요약은 인터뷰 기반 요인을 포함한 문장으로 반환되어야 한다.
+    - 기존 세션 매칭 API 계약은 깨지지 않아야 하며, 확장 필드는 선택적으로 사용할 수 있어야 한다.
+  - Verify:
+    - 인터뷰 기반 쌍 점수 계산 테스트
+    - 기존 lifestyle 기반 하위 호환 테스트
+    - 메인-투-AI 통합 매칭 응답 테스트
+    - API 문서 갱신 확인
+
+- [x] TASK-P1-07 인터뷰 제출 기반 자동 추천 후보 시스템을 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.7, FR-04.4, FR-08.8, FR-10.7
+  - File Scope: `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`, `backend/src/ai_backend/*`, `backend/tests/*`, `deploy/postgres/*`, `docs/api/*`
+  - Depends on: TASK-P0-13, TASK-P1-06
+  - Acceptance:
+    - 인터뷰 저장 시 인터뷰 제출 완료 프로필 전체를 기준으로 추천 후보가 자동 계산되어야 한다.
+    - 새 사용자 또는 수정 사용자가 저장되면 기존 제출자 추천 목록도 함께 갱신되어야 한다.
+    - 추천 후보는 `score >= 70`인 상위 3건만 저장되어야 한다.
+    - 메인 백엔드는 추천 후보 조회 API를 제공해야 한다.
+  - Verify:
+    - 인터뷰 저장 후 추천 후보 생성 테스트
+    - 신규 제출로 기존 사용자 추천 갱신 테스트
+    - 추천 조회 API 테스트
+    - PostgreSQL 스키마 갱신 확인
+
 ## 작업 순서 가이드
 
 - `TASK-P0-01`과 `TASK-P0-02`로 두 서버를 먼저 띄운다.
@@ -323,3 +357,5 @@
 - Self Review: TASK-P1-03 완료. 단일 EC2 기준 GitHub Actions 배포 워크플로, 원격 배포 스크립트, systemd 서비스 템플릿 추가.
 - Self Review: TASK-P1-04 완료. nginx 공개 진입점, `/api` 프록시 규칙, 프론트 기준 base URL 문서를 추가했다.
 - Self Review: TASK-P1-05 완료. PostgreSQL 저장소 백엔드, EC2 설치/초기화 스크립트, 운영 `.env` 기준 DB 설정을 추가했다.
+- Self Review: TASK-P1-06 완료. 인터뷰, 캐릭터, 지역, 입주 시기 기반의 정밀 매칭 점수 계산과 세션 확장 payload, 통합 테스트를 추가했다.
+- Self Review: TASK-P1-07 완료. 인터뷰 저장 시 자동 추천 후보를 계산하고, 기존 제출자 추천까지 함께 갱신하는 양방향 추천 API와 저장 구조를 추가했다.

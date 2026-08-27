@@ -24,6 +24,16 @@ class StorageBackend(Protocol):
 
     def get_profile_interview(self, profile_id: str) -> dict[str, Any] | None: ...
 
+    def list_profile_interviews(self) -> dict[str, dict[str, Any]]: ...
+
+    def save_profile_recommendations(
+        self,
+        profile_id: str,
+        recommendations: dict[str, Any],
+    ) -> None: ...
+
+    def get_profile_recommendations(self, profile_id: str) -> dict[str, Any] | None: ...
+
     def save_session(self, session: dict[str, Any]) -> None: ...
 
     def get_session(self, session_id: str) -> dict[str, Any] | None: ...
@@ -78,6 +88,27 @@ class LocalJsonStorage:
             interview = payload["interviews"].get(profile_id)
             return deepcopy(interview) if interview is not None else None
 
+    def list_profile_interviews(self) -> dict[str, dict[str, Any]]:
+        with self._lock:
+            payload = self._read()
+            return deepcopy(payload["interviews"])
+
+    def save_profile_recommendations(
+        self,
+        profile_id: str,
+        recommendations: dict[str, Any],
+    ) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["recommendations"][profile_id] = deepcopy(recommendations)
+            self._write(payload)
+
+    def get_profile_recommendations(self, profile_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            item = payload["recommendations"].get(profile_id)
+            return deepcopy(item) if item is not None else None
+
     def get_session(self, session_id: str) -> dict[str, Any] | None:
         with self._lock:
             payload = self._read()
@@ -100,7 +131,13 @@ class LocalJsonStorage:
 
     def _read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists():
-            return {"profiles": {}, "interviews": {}, "sessions": {}, "results": {}}
+            return {
+                "profiles": {},
+                "interviews": {},
+                "recommendations": {},
+                "sessions": {},
+                "results": {},
+            }
 
         with self.path.open("r", encoding="utf-8") as handle:
             content = json.load(handle)
@@ -108,6 +145,7 @@ class LocalJsonStorage:
         return {
             "profiles": content.get("profiles", {}),
             "interviews": content.get("interviews", {}),
+            "recommendations": content.get("recommendations", {}),
             "sessions": content.get("sessions", {}),
             "results": content.get("results", {}),
         }
@@ -173,6 +211,40 @@ class DynamoDbStorage:
 
     def get_profile_interview(self, profile_id: str) -> dict[str, Any] | None:
         response = self._table.get_item(Key={"pk": f"PROFILE#{profile_id}", "sk": "INTERVIEW"})
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
+
+    def list_profile_interviews(self) -> dict[str, dict[str, Any]]:
+        response = self._table.scan(
+            FilterExpression="#sk = :interview",
+            ExpressionAttributeNames={"#sk": "sk"},
+            ExpressionAttributeValues={":interview": "INTERVIEW"},
+        )
+        items = response.get("Items", [])
+        interviews: dict[str, dict[str, Any]] = {}
+        for item in items:
+            profile_id = item["pk"].replace("PROFILE#", "", 1)
+            interviews[profile_id] = deepcopy(item["payload"])
+        return interviews
+
+    def save_profile_recommendations(
+        self,
+        profile_id: str,
+        recommendations: dict[str, Any],
+    ) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"PROFILE#{profile_id}",
+                "RECOMMENDATIONS",
+                recommendations,
+                "ready",
+            )
+        )
+
+    def get_profile_recommendations(self, profile_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(
+            Key={"pk": f"PROFILE#{profile_id}", "sk": "RECOMMENDATIONS"}
+        )
         item = response.get("Item")
         return deepcopy(item["payload"]) if item is not None else None
 
@@ -304,6 +376,42 @@ class PostgresStorage:
         with self._cursor(row_factory="dict") as cursor:
             cursor.execute(
                 "SELECT payload FROM profile_interviews WHERE profile_id = %s",
+                (profile_id,),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def list_profile_interviews(self) -> dict[str, dict[str, Any]]:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute("SELECT profile_id, payload FROM profile_interviews")
+            rows = cursor.fetchall()
+            return {row["profile_id"]: deepcopy(row["payload"]) for row in rows}
+
+    def save_profile_recommendations(
+        self,
+        profile_id: str,
+        recommendations: dict[str, Any],
+    ) -> None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO profile_recommendations (profile_id, payload, updated_at)
+                VALUES (%s, %s::jsonb, %s)
+                ON CONFLICT (profile_id) DO UPDATE SET
+                    payload = EXCLUDED.payload,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (
+                    profile_id,
+                    json.dumps(recommendations, ensure_ascii=False),
+                    recommendations["recommended_at"],
+                ),
+            )
+
+    def get_profile_recommendations(self, profile_id: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                "SELECT payload FROM profile_recommendations WHERE profile_id = %s",
                 (profile_id,),
             )
             row = cursor.fetchone()

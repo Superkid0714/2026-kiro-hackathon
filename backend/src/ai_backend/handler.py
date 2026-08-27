@@ -96,10 +96,34 @@ def _build_shared_rules(student_a: dict[str, Any], student_b: dict[str, Any]) ->
     rules: list[str] = []
     lifestyle_a = student_a.get("lifestyle", {})
     lifestyle_b = student_b.get("lifestyle", {})
+    interview_a = student_a.get("interview", {})
+    interview_b = student_b.get("interview", {})
 
     for key in sorted(set(lifestyle_a) & set(lifestyle_b)):
         if lifestyle_a[key] == lifestyle_b[key]:
             rules.append(f"{_label(key)} 기준은 {lifestyle_a[key]}로 함께 유지한다.")
+
+    if interview_a and interview_b:
+        if interview_a.get("quiet_hours_start") == interview_b.get("quiet_hours_start"):
+            rules.append(
+                f"조용한 시간은 {interview_a['quiet_hours_start']}부터 함께 지킨다."
+            )
+        if interview_a.get("cleaning_frequency") == interview_b.get("cleaning_frequency"):
+            rules.append(
+                f"청소는 주 {interview_a['cleaning_frequency']}회 기준으로 함께 맞춘다."
+            )
+        if interview_a.get("dishes_deadline") == interview_b.get("dishes_deadline"):
+            rules.append(
+                f"설거지와 공용 정리는 {interview_a['dishes_deadline']} 처리한다."
+            )
+        if interview_a.get("personal_space_access") == interview_b.get("personal_space_access"):
+            rules.append(
+                f"개인 공간 출입은 {interview_a['personal_space_access']} 기준으로 맞춘다."
+            )
+        if interview_a.get("security_preference") == interview_b.get("security_preference"):
+            rules.append(
+                f"문과 창문 관리는 {interview_a['security_preference']} 기준을 따른다."
+            )
 
     shared_required = sorted(
         set(student_a.get("required_rules", [])) & set(student_b.get("required_rules", []))

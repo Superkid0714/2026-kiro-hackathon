@@ -114,3 +114,16 @@ def get_profile_interview(profile_id: str) -> dict[str, object]:
             detail="profile_interview_not_found",
         )
     return {"status": "ok", **interview}
+
+
+@router.get("/{profile_id}/recommendations")
+def get_profile_recommendations(profile_id: str) -> dict[str, object]:
+    recommendations = profile_service.get_recommendations(profile_id)
+    if recommendations is None:
+        if profile_service.get_profile(profile_id) is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="profile_not_found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="profile_recommendations_not_found",
+        )
+    return {"status": "ok", **recommendations}

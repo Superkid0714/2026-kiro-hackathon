@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
@@ -9,9 +11,17 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 class StudentProfile(BaseModel):
     student_id: str = Field(min_length=1)
+    profile_id: str | None = None
+    nickname: str | None = None
+    gender: str | None = None
+    region: str | None = None
+    move_in_period: str | None = None
+    stay_duration_months: int | None = None
     lifestyle: dict[str, str] = Field(default_factory=dict)
     required_rules: list[str] = Field(default_factory=list)
     preferences: dict[str, int] = Field(default_factory=dict)
+    interview: dict[str, Any] = Field(default_factory=dict)
+    character: dict[str, Any] = Field(default_factory=dict)
 
 
 class SessionCreateRequest(BaseModel):

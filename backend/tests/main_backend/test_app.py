@@ -82,3 +82,97 @@ def test_run_session_match_returns_integrated_result() -> None:
     result_response = client.get(f"/sessions/{session_id}/result")
     assert result_response.status_code == 200
     assert result_response.json()["status"] == "ok"
+
+
+def test_create_session_accepts_interview_driven_student_payload() -> None:
+    response = client.post(
+        "/sessions",
+        json={
+            "session_name": "interview-session",
+            "students": [
+                {
+                    "student_id": "S1",
+                    "profile_id": "profile-1",
+                    "nickname": "민수",
+                    "region": "광주광역시",
+                    "move_in_period": "2026-09",
+                    "stay_duration_months": 6,
+                    "interview": {
+                        "wake_up_time": "07:00",
+                        "sleep_time": "23:30",
+                        "noise_sensitive": True,
+                        "quiet_hours_start": "22:00",
+                        "cleaning_frequency": "3",
+                        "dishes_deadline": "그날 이내에",
+                        "guest_frequency": "1",
+                        "smokes": False,
+                        "drinking_frequency": "2",
+                        "home_stay_frequency": "5",
+                        "meal_preference": "직접",
+                        "home_activity_frequency": "5",
+                        "supplies_sharing": "일부 공유",
+                        "summer_temperature": 24,
+                        "winter_temperature": 21,
+                        "pet_ok": True,
+                        "pet_preference": "고양이",
+                        "conflict_resolution": "즉시 대면",
+                        "shared_cost_rule": "반반",
+                        "personal_space_access": "노크 혹은 허락",
+                        "personal_space_ratio": "반반",
+                        "security_preference": "외출시",
+                        "absence_notice": "하루 이상",
+                    },
+                    "character": {
+                        "rule_score": 71.0,
+                        "sharing_score": 39.8,
+                        "type_code": "PEE",
+                    },
+                },
+                {
+                    "student_id": "S2",
+                    "profile_id": "profile-2",
+                    "nickname": "서연",
+                    "region": "광주광역시",
+                    "move_in_period": "2026-09",
+                    "stay_duration_months": 7,
+                    "interview": {
+                        "wake_up_time": "07:20",
+                        "sleep_time": "23:40",
+                        "noise_sensitive": True,
+                        "quiet_hours_start": "22:10",
+                        "cleaning_frequency": "3",
+                        "dishes_deadline": "그날 이내에",
+                        "guest_frequency": "1",
+                        "smokes": False,
+                        "drinking_frequency": "2",
+                        "home_stay_frequency": "5",
+                        "meal_preference": "직접",
+                        "home_activity_frequency": "4",
+                        "supplies_sharing": "일부 공유",
+                        "summer_temperature": 24,
+                        "winter_temperature": 20,
+                        "pet_ok": True,
+                        "pet_preference": "고양이",
+                        "conflict_resolution": "즉시 대면",
+                        "shared_cost_rule": "반반",
+                        "personal_space_access": "노크 혹은 허락",
+                        "personal_space_ratio": "반반",
+                        "security_preference": "외출시",
+                        "absence_notice": "하루 이상",
+                    },
+                    "character": {
+                        "rule_score": 69.0,
+                        "sharing_score": 42.0,
+                        "type_code": "PEE",
+                    },
+                },
+            ],
+        },
+    )
+
+    body = response.json()
+
+    assert response.status_code == 201
+    assert body["status"] == "accepted"
+    assert body["session"]["students"][0]["profile_id"] == "profile-1"
+    assert body["session"]["students"][0]["interview"]["wake_up_time"] == "07:00"
