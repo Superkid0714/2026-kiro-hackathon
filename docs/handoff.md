@@ -24,6 +24,26 @@
 
 ## 기록
 
+### 2026-08-27 — TASK-P1-04
+
+- **Agent**: Codex
+- **Task**: TASK-P1-04 공개 API를 nginx 80 포트 `/api` 경로로 노출
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/main_backend/app.py`
+  - `deploy/nginx/roompact.conf`
+  - `scripts/install-nginx-site.sh`
+  - `scripts/deploy-ec2.sh`
+  - `docs/api/main-backend.md`
+  - `docs/api/backend-workflow.md`
+- **테스트 결과**: PASS — `backend/scripts/verify.ps1`, `bash -n scripts/deploy-ec2.sh`, `bash -n scripts/install-nginx-site.sh`, `GET /api/health`
+- **남은 작업**:
+  - EC2 보안 그룹에서 `80/tcp` 공개 여부 확인
+  - 프론트가 `/api` 기준으로 base URL을 사용하도록 반영
+- **비고**: 내부 애플리케이션 포트는 `8000/8001`로 유지하고, 외부 공개는 nginx 단일 진입점으로 정리함.
+
 ### 2026-08-27 — API-DOCS
 
 - **Agent**: Codex

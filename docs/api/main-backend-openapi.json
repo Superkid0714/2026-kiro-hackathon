@@ -5,6 +5,16 @@
     "description": "Main backend API for RoomPACT Campus",
     "version": "0.1.0"
   },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Public API behind nginx on EC2"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "Direct local development"
+    }
+  ],
   "paths": {
     "/health": {
       "get": {
@@ -463,6 +473,13 @@
           "type": {
             "type": "string",
             "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
           }
         },
         "type": "object",

@@ -5,6 +5,7 @@
 ## 메인 원칙
 
 - 프론트가 호출하는 공개 API는 메인 백엔드에 둔다.
+- 프론트 공개 base URL은 EC2 기준 `http://<host>/api`로 유지한다.
 - AI 처리, 점수 계산, 매칭 로직은 AI 백엔드에 둔다.
 - 프론트와 공유할 계약은 먼저 `docs/api/main-backend.md`에 반영한다.
 - 구현 후 `backend/scripts/verify.ps1`를 실행한다.

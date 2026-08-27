@@ -238,6 +238,22 @@
     - 배포 스크립트 문법 확인
     - `systemd` 서비스 파일 존재 확인
 
+- [x] TASK-P1-04 공개 API를 nginx 80 포트 `/api` 경로로 노출한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-11.7, NFR-07, NFR-10
+  - File Scope: `deploy/nginx/*`, `scripts/*`, `docs/api/*`, `backend/src/main_backend/app.py`
+  - Depends on: TASK-P1-03
+  - Acceptance:
+    - EC2에서 `nginx`가 80 포트의 공개 진입점을 제공해야 한다.
+    - 공개 API는 `/api/...` 경로로 메인 백엔드에 프록시되어야 한다.
+    - AI 백엔드 `8001`은 외부 공개 없이 내부 호출 전용으로 유지되어야 한다.
+    - 프론트가 사용할 base URL 문서와 OpenAPI 정보가 갱신되어야 한다.
+  - Verify:
+    - nginx 설정 문법 확인
+    - 공개 `GET /api/health` 호출 확인
+    - 기존 내부 `GET http://127.0.0.1:8000/health` 유지 확인
+
 ## 작업 순서 가이드
 
 - `TASK-P0-01`과 `TASK-P0-02`로 두 서버를 먼저 띄운다.
@@ -253,3 +269,4 @@
 - Self Review: TASK-P0-02~10 완료. AI 백엔드 FastAPI 진입점, 결정론적 scoring/matching, Bedrock 경계, fallback, 공용 저장소, 메인-투-AI 연결, 통합 테스트를 모두 구현했다.
 - Self Review: TASK-P0-11 완료. 메인 백엔드 프로필 생성/목록/조회 API와 프론트 공유 문서를 추가했다.
 - Self Review: TASK-P1-03 완료. 단일 EC2 기준 GitHub Actions 배포 워크플로, 원격 배포 스크립트, systemd 서비스 템플릿 추가.
+- Self Review: TASK-P1-04 완료. nginx 공개 진입점, `/api` 프록시 규칙, 프론트 기준 base URL 문서를 추가했다.

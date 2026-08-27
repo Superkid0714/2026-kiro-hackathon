@@ -56,6 +56,11 @@ if [ -d "deploy/systemd" ]; then
   sudo bash ./scripts/install-systemd-services.sh
 fi
 
+if [ -f "deploy/nginx/roompact.conf" ]; then
+  echo "[deploy] installing nginx site"
+  bash ./scripts/install-nginx-site.sh "${APP_DIR}"
+fi
+
 echo "[deploy] restarting main backend"
 sudo systemctl restart roompact-main-backend.service
 sudo systemctl status roompact-main-backend.service --no-pager
@@ -69,5 +74,8 @@ if systemctl list-unit-files | grep -q "^roompact-ai-backend.service"; then
     echo "[deploy] ai backend source missing, skipping restart"
   fi
 fi
+
+echo "[deploy] checking public api health"
+curl --fail --silent http://127.0.0.1/api/health >/dev/null || true
 
 echo "[deploy] completed"

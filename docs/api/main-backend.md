@@ -6,7 +6,8 @@
 ## Base URL
 
 - Local: `http://localhost:8000`
-- EC2: `http://15.134.137.117:8000`
+- EC2 Public: `http://15.134.137.117/api`
+- EC2 Direct Backend: `http://15.134.137.117:8000` (운영용 공개 주소로 쓰지 않고 점검용으로만 유지)
 
 ## API 역할
 
@@ -21,6 +22,7 @@
 ### `GET /health`
 
 - 용도: 메인 백엔드 헬스체크
+- 공개 호출 예시: `GET /api/health`
 - 응답:
 
 ```json
@@ -33,6 +35,7 @@
 ### `POST /profiles`
 
 - 용도: 기본 학생 프로필 생성
+- 공개 호출 예시: `POST /api/profiles`
 - 요청:
 
 ```json
@@ -67,6 +70,7 @@
 ### `GET /profiles`
 
 - 용도: 프로필 목록 조회
+- 공개 호출 예시: `GET /api/profiles`
 - 성공 응답:
 
 ```json
@@ -91,6 +95,7 @@
 ### `GET /profiles/{profile_id}`
 
 - 용도: 프로필 단건 조회
+- 공개 호출 예시: `GET /api/profiles/{profile_id}`
 - 성공 응답:
 
 ```json
@@ -120,6 +125,7 @@
 ### `POST /sessions`
 
 - 용도: 학생 설문 세션 생성
+- 공개 호출 예시: `POST /api/sessions`
 - 요청:
 
 ```json
@@ -189,6 +195,7 @@
 ### `GET /sessions/{session_id}`
 
 - 용도: 생성된 세션 조회
+- 공개 호출 예시: `GET /api/sessions/{session_id}`
 - 성공 응답:
 
 ```json
@@ -216,6 +223,7 @@
 ### `POST /sessions/{session_id}/match`
 
 - 용도: 세션 기준 룸메이트 매칭 실행
+- 공개 호출 예시: `POST /api/sessions/{session_id}/match`
 - 성공 응답:
 
 ```json
