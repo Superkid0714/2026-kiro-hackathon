@@ -69,57 +69,61 @@ def _top_factors(
         if len(labels) == 3:
             break
     if not labels:
-        labels.append("생활 인터뷰 기본 응답을 기준으로 성향을 계산했습니다")
+        labels.append("생활 인터뷰 응답을 바탕으로 전반적인 생활 성향을 살펴봤어요")
     return labels
 
 
 def _rule_axis_entries(interview: dict[str, Any]) -> list[WeightedAxisValue]:
     return [
-        _entry(_bool(interview["noise_sensitive"]), 1.5, "생활 소음에 민감합니다"),
+        _entry(
+            _bool(interview["noise_sensitive"]),
+            1.5,
+            "조용하고 안정적인 생활 환경을 중요하게 생각해요",
+        ),
         _entry(
             _quiet_hours_score(interview["quiet_hours_start"]),
             1.5,
-            "조용한 시간 기준이 분명합니다",
+            "늦은 시간에는 차분한 분위기를 선호해요",
         ),
         _entry(
             _frequency_score(interview["cleaning_frequency"]),
             1.5,
-            "청소 기준이 분명합니다",
+            "청소와 정리 주기를 꽤 중요하게 생각해요",
         ),
         _entry(
             _deadline_score(interview["dishes_deadline"]),
             1.5,
-            "공용 정리 마감이 빠른 편입니다",
+            "함께 쓰는 공간은 바로바로 정리되는 편을 선호해요",
         ),
         _entry(
             _frequency_score(interview["guest_frequency"]),
             0.5,
-            "방문객 빈도 기준을 두는 편입니다",
+            "방문객 횟수에도 어느 정도 기준이 있는 편이에요",
         ),
         _entry(
             _conflict_resolution_score(interview["conflict_resolution"]),
             0.5,
-            "문제가 생기면 바로 조율하려는 편입니다",
+            "문제가 생기면 빠르게 이야기하고 맞춰가는 편이에요",
         ),
         _entry(
             _shared_cost_score(interview["shared_cost_rule"]),
             0.3,
-            "공동 비용 기준을 명확히 두는 편입니다",
+            "공동 비용도 기준을 정해두면 마음이 편한 편이에요",
         ),
         _entry(
             _personal_access_rule_score(interview["personal_space_access"]),
             1.2,
-            "개인 공간 출입 기준을 중요하게 생각합니다",
+            "개인 공간에 대한 경계를 분명하게 두는 편이에요",
         ),
         _entry(
             _security_score(interview["security_preference"]),
             1.5,
-            "보안과 잠금 기준을 중요하게 생각합니다",
+            "문과 창문 잠금처럼 기본적인 안전 기준을 중요하게 여겨요",
         ),
         _entry(
             _absence_notice_score(interview["absence_notice"]),
             1.0,
-            "외출 공유 규칙을 중요하게 생각합니다",
+            "오래 집을 비울 때는 서로 알려주는 편을 선호해요",
         ),
     ]
 
@@ -129,42 +133,42 @@ def _sharing_axis_entries(interview: dict[str, Any]) -> list[WeightedAxisValue]:
         _entry(
             _frequency_score(interview["guest_frequency"]),
             1.2,
-            "방문객과 교류에 비교적 열려 있습니다",
+            "사람들과 어울리거나 초대하는 데 비교적 열린 편이에요",
         ),
         _entry(
             _frequency_score(interview["home_stay_frequency"]),
             0.5,
-            "집에서 보내는 시간이 비교적 많습니다",
+            "집에서 보내는 시간이 꽤 있는 편이에요",
         ),
         _entry(
             _supplies_score(interview["supplies_sharing"]),
             1.7,
-            "생필품과 식재료를 함께 쓰는 데 열려 있습니다",
+            "생필품이나 식재료를 함께 나누는 생활에 비교적 편안함을 느껴요",
         ),
         _entry(
             _conflict_resolution_score(interview["conflict_resolution"]),
             1.0,
-            "문제가 생기면 바로 소통하는 편입니다",
+            "필요한 일이 생기면 바로 소통하는 편이에요",
         ),
         _entry(
             _shared_cost_score(interview["shared_cost_rule"]),
             0.8,
-            "공동 비용을 함께 관리하는 편입니다",
+            "공동 생활 비용은 함께 맞춰 관리하는 편이 편해요",
         ),
         _entry(
             _personal_access_sharing_score(interview["personal_space_access"]),
             1.5,
-            "개인 공간 경계가 비교적 개방적입니다",
+            "개인 공간과 공용 공간의 경계에 비교적 유연한 편이에요",
         ),
         _entry(
             _personal_ratio_score(interview["personal_space_ratio"]),
             0.8,
-            "공간을 유연하게 나누는 편입니다",
+            "공간은 상황에 맞게 유연하게 나누는 편을 선호해요",
         ),
         _entry(
             _absence_notice_score(interview["absence_notice"]),
             1.0,
-            "외출 여부를 공유하는 편입니다",
+            "서로의 일정이나 외출 여부를 공유하는 데 비교적 편안함을 느껴요",
         ),
     ]
 
