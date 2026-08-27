@@ -24,6 +24,19 @@
 
 ## 기록
 
+### 2026-08-27 — EC2-CONFIG
+
+- **Agent**: Codex
+- **Task**: EC2 서비스가 `backend/.env`를 읽도록 배포 설정 보강
+- **변경 파일**:
+  - `deploy/systemd/roompact-main-backend.service`
+  - `deploy/systemd/roompact-ai-backend.service`
+  - `scripts/deploy-ec2.sh`
+- **테스트 결과**: PASS — `bash -n scripts/deploy-ec2.sh`, EC2 재배포 후 서비스 재기동 확인
+- **남은 작업**:
+  - DynamoDB를 실제 운영 저장소로 쓸 경우 `.env` 값과 IAM 권한 설정
+- **비고**: 기존 EC2는 환경변수 미설정으로 기본 로컬 JSON 저장을 사용하고 있었음. 이후부터는 `backend/.env`가 운영 설정의 기준이 됨.
+
 ### 2026-08-27 — TASK-P0-12
 
 - **Agent**: Codex

@@ -51,6 +51,11 @@ fi
 
 cd "${APP_DIR}"
 
+if [ ! -f "${BACKEND_DIR}/.env" ] && [ -f "${BACKEND_DIR}/.env.example" ]; then
+  echo "[deploy] seeding backend .env from .env.example"
+  cp "${BACKEND_DIR}/.env.example" "${BACKEND_DIR}/.env"
+fi
+
 if [ -d "deploy/systemd" ]; then
   echo "[deploy] installing systemd units"
   sudo bash ./scripts/install-systemd-services.sh

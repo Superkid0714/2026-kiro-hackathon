@@ -18,6 +18,15 @@
 - 프로필별 생활 인터뷰 저장 및 조회
 - AI 백엔드 오류를 프론트가 처리 가능한 구조로 전달
 
+## 프론트 연동 흐름
+
+- 기본 정보 화면에서 `POST /api/profiles`를 먼저 호출한다.
+- 응답으로 받은 `profile_id`를 프론트 상태에 보관한다.
+- 인터뷰 질문은 여러 UI 화면으로 나눠 받아도 된다.
+- 프론트는 각 화면의 답변을 최종적으로 하나의 JSON으로 합친다.
+- 마지막 제출 시 `PUT /api/profiles/{profile_id}/interview`를 한 번 호출해 전체 인터뷰를 저장한다.
+- 저장된 인터뷰를 다시 불러와야 할 때는 `GET /api/profiles/{profile_id}/interview`를 사용한다.
+
 ## 현재 구현된 엔드포인트
 
 ### `GET /health`
@@ -127,6 +136,77 @@
 
 - 용도: 프로필별 생활 인터뷰 응답 저장
 - 공개 호출 예시: `PUT /api/profiles/{profile_id}/interview`
+- 프론트 저장 방식: 여러 화면에서 받은 답변을 프론트에서 합친 뒤 `한 번에 저장`
+- 기능명세:
+  - 프로필 1건에 대한 생활 인터뷰 전체 응답을 저장한다.
+  - 인터뷰는 부분 저장이 아니라 최종 제출 기준으로 전체 payload를 받는다.
+  - 흡연/반려동물 관련 조건부 필드는 응답 값에 따라 필수 여부가 달라진다.
+- Path Variable:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| profile_id | String | `POST /api/profiles` 응답으로 받은 프로필 ID |
+
+- Request Body 필드:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| wake_up_time | String | 기상 시간, `HH:MM`, 10분 단위 |
+| sleep_time | String | 취침 시간, `HH:MM`, 10분 단위 |
+| noise_sensitive | Boolean | 생활 소음 민감 여부 |
+| quiet_hours_start | String | 조용했으면 하는 시작 시간, `HH:MM`, 10분 단위 |
+| cleaning_frequency | String | `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| dishes_deadline | String | `바로`, `그날 이내에`, `다음날 아침` |
+| guest_frequency | String | 지인 초대 허용 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| smokes | Boolean | 흡연 여부 |
+| smoking_type | String or null | 흡연 시 담배 종류, `smokes=true`일 때 필수 |
+| smoking_place | String or null | `밖`, `베란다`, `집 안`, `smokes=true`일 때 필수 |
+| drinking_frequency | String | 음주 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| home_stay_frequency | String | 집에 머무는 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| meal_preference | String | `배달`, `직접` |
+| home_activity_frequency | String | 게임/공부/재택 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| supplies_sharing | String | `공동구매`, `각자`, `일부 공유` |
+| summer_temperature | Number | 여름 선호 실내 온도 |
+| winter_temperature | Number | 겨울 선호 실내 온도 |
+| pet_ok | Boolean | 반려동물 동거 가능 여부 |
+| pet_preference | String or null | `고양이`, `강아지`, `둘 다`, `pet_ok=true`일 때 필수 |
+| conflict_resolution | String | `즉시 대면`, `모아서 대면` |
+| shared_cost_rule | String | `반반`, `거주 시간 비율` |
+| personal_space_access | String | `자유롭게`, `노크 혹은 허락`, `불가능` |
+| personal_space_ratio | String | `반반`, `필요한 만큼` |
+| security_preference | String | `항시 잠금`, `외출시`, `상관없음` |
+| absence_notice | String | `항상`, `하루 이상`, `필요 없음` |
+
+- UI 질문 매핑:
+
+| 질문 번호 | 프론트 질문 | 저장 필드 |
+| --- | --- | --- |
+| 1 | 몇 시에 일어나나요? | `wake_up_time` |
+| 2 | 몇 시에 잠드나요? | `sleep_time` |
+| 3 | 생활 소음에 많이 민감한가요? | `noise_sensitive` |
+| 4 | 몇 시 이후부터는 조용하게 지냈으면 하나요? | `quiet_hours_start` |
+| 5 | 주에 몇 번 청소했으면 하나요? | `cleaning_frequency` |
+| 6 | 공용 물건 정리와 설거지는 언제 끝내야 하나요? | `dishes_deadline` |
+| 7 | 지인을 집에 초대하는 건 주에 몇 번까지 괜찮은가요? | `guest_frequency` |
+| 8 | 담배를 피우나요? | `smokes` |
+| 8-1 | 담배 종류? | `smoking_type` |
+| 8-2 | 어디서 피우는 게 좋은가요? | `smoking_place` |
+| 9 | 술을 자주 마시나요? | `drinking_frequency` |
+| 10 | 주에 집에 얼마나 머무나요? | `home_stay_frequency` |
+| 11 | 배달음식 혹은 직접 요리 중 어떤 걸 선호하나요? | `meal_preference` |
+| 12 | 집에서 게임/공부/재택근무를 얼마나 자주 하나요? | `home_activity_frequency` |
+| 13 | 생필품과 식재료는 어떻게 사용하는 게 편한가요? | `supplies_sharing` |
+| 14 | 여름에는 어떤 실내 온도를 선호하나요? | `summer_temperature` |
+| 15 | 겨울에는 어떤 실내 온도를 선호하나요? | `winter_temperature` |
+| 16 | 반려동물과 함께 거주해도 괜찮은가요? | `pet_ok` |
+| 16-1 | 괜찮을 경우, 어떤 종류가 괜찮은가요? | `pet_preference` |
+| 17 | 문제가 생겼을 경우, 어떻게 해결하는 게 편한가요? | `conflict_resolution` |
+| 18 | 공동 생활 비용은 어떻게 관리하는 게 좋은가요? | `shared_cost_rule` |
+| 19 | 서로의 방이나 개인 공간에 들어가는 것에 대해 어떻게 생각하나요? | `personal_space_access` |
+| 20 | 개인 공간 비율은 어떻게 나누는 게 낫나요? | `personal_space_ratio` |
+| 21 | 방문과 창문은 얼마나 철저하게 관리했으면 하나요? | `security_preference` |
+| 22 | 집을 장시간 비울 경우, 사전에 알려주는 게 필요한가요? | `absence_notice` |
+
 - 요청:
 
 ```json
@@ -198,11 +278,15 @@
   - 시간 입력은 `HH:MM` 24시간 형식이며 `10분` 단위만 허용한다.
   - `smokes: true`이면 `smoking_type`, `smoking_place`가 필요하다.
   - `pet_ok: true`이면 `pet_preference`가 필요하다.
+  - 프론트는 여러 화면에서 받은 응답을 합쳐서 최종적으로 이 요청 본문 전체를 보낸다.
 
 ### `GET /profiles/{profile_id}/interview`
 
 - 용도: 프로필별 생활 인터뷰 응답 조회
 - 공개 호출 예시: `GET /api/profiles/{profile_id}/interview`
+- 기능명세:
+  - 저장된 인터뷰 전체 응답을 반환한다.
+  - 수정 화면 진입, 제출 확인 화면, 이어서 작성 기능에 사용할 수 있다.
 - 성공 응답:
 
 ```json
