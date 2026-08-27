@@ -12,6 +12,12 @@ from typing import Any, Protocol
 
 
 class StorageBackend(Protocol):
+    def save_profile(self, profile: dict[str, Any]) -> None: ...
+
+    def list_profiles(self) -> list[dict[str, Any]]: ...
+
+    def get_profile(self, profile_id: str) -> dict[str, Any] | None: ...
+
     def save_session(self, session: dict[str, Any]) -> None: ...
 
     def get_session(self, session_id: str) -> dict[str, Any] | None: ...
@@ -35,6 +41,25 @@ class LocalJsonStorage:
             payload["sessions"][session["session_id"]] = deepcopy(session)
             self._write(payload)
 
+    def save_profile(self, profile: dict[str, Any]) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["profiles"][profile["profile_id"]] = deepcopy(profile)
+            self._write(payload)
+
+    def list_profiles(self) -> list[dict[str, Any]]:
+        with self._lock:
+            payload = self._read()
+            profiles = payload["profiles"].values()
+            sorted_profiles = sorted(profiles, key=lambda item: item["created_at"], reverse=True)
+            return deepcopy(sorted_profiles)
+
+    def get_profile(self, profile_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            profile = payload["profiles"].get(profile_id)
+            return deepcopy(profile) if profile is not None else None
+
     def get_session(self, session_id: str) -> dict[str, Any] | None:
         with self._lock:
             payload = self._read()
@@ -57,12 +82,16 @@ class LocalJsonStorage:
 
     def _read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists():
-            return {"sessions": {}, "results": {}}
+            return {"profiles": {}, "sessions": {}, "results": {}}
 
         with self.path.open("r", encoding="utf-8") as handle:
             content = json.load(handle)
 
-        return {"sessions": content.get("sessions", {}), "results": content.get("results", {})}
+        return {
+            "profiles": content.get("profiles", {}),
+            "sessions": content.get("sessions", {}),
+            "results": content.get("results", {}),
+        }
 
     def _write(self, payload: dict[str, dict[str, Any]]) -> None:
         with tempfile.NamedTemporaryFile(
@@ -86,6 +115,32 @@ class DynamoDbStorage:
 
         resource = boto3.resource("dynamodb", region_name=region_name)
         self._table = resource.Table(table_name)
+
+    def save_profile(self, profile: dict[str, Any]) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"PROFILE#{profile['profile_id']}",
+                "PROFILE",
+                profile,
+                "active",
+            )
+        )
+
+    def list_profiles(self) -> list[dict[str, Any]]:
+        response = self._table.scan(
+            FilterExpression="#sk = :profile",
+            ExpressionAttributeNames={"#sk": "sk"},
+            ExpressionAttributeValues={":profile": "PROFILE"},
+        )
+        items = response.get("Items", [])
+        profiles = [item["payload"] for item in items]
+        profiles.sort(key=lambda item: item["created_at"], reverse=True)
+        return deepcopy(profiles)
+
+    def get_profile(self, profile_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(Key={"pk": f"PROFILE#{profile_id}", "sk": "PROFILE"})
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
 
     def save_session(self, session: dict[str, Any]) -> None:
         self._table.put_item(

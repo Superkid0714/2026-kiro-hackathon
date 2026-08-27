@@ -13,7 +13,7 @@ inclusion: auto
 ├── .kiro/
 │   ├── specs/          # Spec 문서 (requirements, design, tasks)
 │   └── steering/       # 프로젝트 지침 (product, tech, structure)
-├── docs/               # 핸드오프, 의사결정 기록
+├── docs/               # 핸드오프, API 명세, 의사결정 기록
 ├── backend/            # 백엔드 전용 작업 디렉토리
 │   ├── pyproject.toml
 │   ├── .env.example
@@ -52,6 +52,7 @@ inclusion: auto
 - AI 백엔드 코드는 `backend/src/ai_backend/` 아래에 둔다
 - 백엔드 테스트 코드는 `backend/tests/` 아래에 둔다
 - 백엔드 검증 스크립트는 `backend/scripts/` 아래에 둔다
+- 프론트와 공유할 API 문서는 `docs/api/` 아래에 둔다
 - 프론트엔드와 공유하는 예제 payload, 샘플 JSON은 필요 시 `docs/` 또는 `tests/fixtures/` 아래에 둔다
 
 ## 새 파일 생성 시

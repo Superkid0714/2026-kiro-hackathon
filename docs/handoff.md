@@ -24,6 +24,23 @@
 
 ## 기록
 
+### 2026-08-27 — API-DOCS
+
+- **Agent**: Codex
+- **Task**: 메인 백엔드 API 계약 문서와 OpenAPI 산출물, 향후 API 추가 워크플로 정리
+- **변경 파일**:
+  - `backend/src/main_backend/app.py`
+  - `backend/src/main_backend/routes/api.py`
+  - `backend/scripts/export_openapi.py`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+  - `docs/api/backend-workflow.md`
+  - `.kiro/steering/structure.md`
+- **테스트 결과**: PASS — `backend/scripts/verify.ps1`, `backend/scripts/export_openapi.py`
+- **남은 작업**:
+  - 프론트 요구사항에 맞춰 신규 메인 백엔드 API를 문서 우선으로 추가
+- **비고**: 프론트는 사람용 문서 `docs/api/main-backend.md`와 기계용 스펙 `docs/api/main-backend-openapi.json`을 함께 사용할 수 있다.
+
 ### 2026-08-27 — REPO-STRUCTURE
 
 - **Agent**: Codex

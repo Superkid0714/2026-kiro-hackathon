@@ -18,7 +18,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-08.1, FR-08.2, FR-08.3, FR-08.4, FR-11.1
-  - File Scope: `src/main_backend/app.py`, `src/main_backend/routes/*`, `src/main_backend/services/*`
+  - File Scope: `backend/src/main_backend/app.py`, `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`
   - Depends on: 없음
   - Acceptance:
     - 일반 백엔드 서버가 실행 가능해야 한다.
@@ -33,7 +33,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-09.1, FR-09.2, FR-09.3, FR-11.1
-  - File Scope: `src/ai_backend/app.py`, `src/ai_backend/handler.py`
+  - File Scope: `backend/src/ai_backend/app.py`, `backend/src/ai_backend/handler.py`
   - Depends on: 없음
   - Acceptance:
     - AI 백엔드 서버가 실행 가능해야 한다.
@@ -48,7 +48,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-11.2, FR-11.3, FR-11.4, NFR-07
-  - File Scope: `src/main_backend/services/*`, `src/ai_backend/app.py`, `docs/*`
+  - File Scope: `backend/src/main_backend/services/*`, `backend/src/ai_backend/app.py`, `docs/*`
   - Depends on: TASK-P0-01, TASK-P0-02
   - Acceptance:
     - 일반 백엔드가 설정값으로 AI 백엔드 엔드포인트를 받아 연결할 수 있어야 한다.
@@ -63,13 +63,13 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-02.1, FR-02.2, FR-02.3, FR-02.4, FR-02.5, FR-04.1, FR-04.2, FR-04.3
-  - File Scope: `src/ai_backend/scoring.py`
+  - File Scope: `backend/src/ai_backend/scoring.py`
   - Depends on: TASK-P0-02
   - Acceptance:
     - 학생 쌍별 호환 점수와 추천 이유 근거를 계산해야 한다.
     - 필수 조건 충돌 쌍은 배정 후보에서 제외 가능한 형태로 표시되어야 한다.
     - 동일 입력에 대해 동일 점수와 동일 근거가 반환되어야 한다.
-    - `llm_client.py` 또는 Bedrock 관련 import가 없어야 한다.
+    - `backend/src/ai_backend/llm_client.py` 또는 Bedrock 관련 import가 없어야 한다.
   - Verify:
     - 필수 조건 충돌 제외 테스트
     - 선호 가중치 반영 테스트
@@ -80,13 +80,13 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-03.1, FR-03.2, FR-03.3, FR-03.4, FR-03.5
-  - File Scope: `src/ai_backend/matching.py`
+  - File Scope: `backend/src/ai_backend/matching.py`
   - Depends on: TASK-P0-04
   - Acceptance:
     - `networkx` 매칭 API를 사용해 전체 학생 집합의 2인실 배정을 계산해야 한다.
     - 한 학생이 정확히 하나의 페어에만 속해야 한다.
     - 완전 매칭이 불가능한 경우 구조화된 실패 결과를 반환해야 한다.
-    - `llm_client.py` 또는 Bedrock 관련 import가 없어야 한다.
+    - `backend/src/ai_backend/llm_client.py` 또는 Bedrock 관련 import가 없어야 한다.
   - Verify:
     - 짝수 인원 완전 매칭 테스트
     - 매칭 불가 입력 테스트
@@ -97,7 +97,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-05.2, FR-05.3, FR-06.3, FR-07.3, NFR-02, NFR-03
-  - File Scope: `src/ai_backend/llm_client.py`, `src/ai_backend/fallback.py`
+  - File Scope: `backend/src/ai_backend/llm_client.py`, `backend/src/ai_backend/fallback.py`
   - Depends on: TASK-P0-02
   - Acceptance:
     - Bedrock 호출 코드는 `llm_client.py` 한 곳에만 있어야 한다.
@@ -112,7 +112,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-10.1, FR-10.2, FR-10.3, FR-10.4, NFR-09
-  - File Scope: `src/main_backend/services/*`, `src/ai_backend/handler.py`, `docs/*`
+  - File Scope: `backend/src/main_backend/services/*`, `backend/src/ai_backend/handler.py`, `docs/*`
   - Depends on: TASK-P0-01, TASK-P0-02
   - Acceptance:
     - 일반 백엔드와 AI 백엔드가 공용 키 구조를 사용해야 한다.
@@ -127,7 +127,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-05.1, FR-05.2, FR-05.3, FR-05.4
-  - File Scope: `src/ai_backend/scenario.py`
+  - File Scope: `backend/src/ai_backend/scenario.py`
   - Depends on: TASK-P0-06
   - Acceptance:
     - 입력에 갈등 요약과 `preset_id`가 포함되고 호출 조건이 참일 때 `narrative` 문자열과 `source` 필드가 반환되어야 한다.
@@ -144,7 +144,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-06.1, FR-06.2, FR-06.3, FR-07.1, FR-07.2, FR-07.3
-  - File Scope: `src/ai_backend/negotiate.py`, `src/ai_backend/pact.py`
+  - File Scope: `backend/src/ai_backend/negotiate.py`, `backend/src/ai_backend/pact.py`
   - Depends on: TASK-P0-06
   - Acceptance:
     - `negotiate.py`는 입력 갈등 요약이 있을 때 `suggestions` 문자열 배열과 `source` 필드를 반환해야 한다.
@@ -162,7 +162,7 @@
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-08.3, FR-09.3, FR-10.4, FR-11.1, FR-11.2, FR-11.3, FR-11.4, NFR-01, NFR-02, NFR-06, NFR-07, NFR-08
-  - File Scope: `src/main_backend/*`, `src/ai_backend/*`
+  - File Scope: `backend/src/main_backend/*`, `backend/src/ai_backend/*`
   - Depends on: TASK-P0-03, TASK-P0-05, TASK-P0-07, TASK-P0-08, TASK-P0-09
   - Acceptance:
     - 일반 백엔드가 AI 백엔드와 연결된 상태에서 전체 요청 흐름을 완료해야 한다.
@@ -175,13 +175,30 @@
     - LLM fallback 통합 테스트
     - Gradio 소비용 응답 필드 확인 테스트
 
+- [x] TASK-P0-11 메인 백엔드 프로필 API를 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.4, FR-08.5
+  - File Scope: `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`, `backend/tests/main_backend/*`, `docs/api/*`
+  - Depends on: TASK-P0-01
+  - Acceptance:
+    - 메인 백엔드는 `nickname`, `age`, `gender`, `region`, `move_in_period`, `stay_duration_months` 필드를 저장하는 프로필 생성 API를 제공해야 한다.
+    - 메인 백엔드는 프로필 목록 조회와 단건 조회 API를 제공해야 한다.
+    - 각 프로필은 서버가 발급한 `profile_id`를 가져야 한다.
+    - 프론트가 사용할 수 있는 요청/응답 문서가 갱신되어야 한다.
+  - Verify:
+    - 프로필 생성 테스트
+    - 프로필 목록 조회 테스트
+    - 프로필 단건 조회 테스트
+    - API 문서 갱신 확인
+
 ## P1
 
 - [ ] TASK-P1-01 저장 시 lint와 test를 실행하는 Hook을 추가한다
   - Status: READY
   - Owner: unassigned
   - Requirement: FR-12.1, FR-12.3
-  - File Scope: `.kiro/hooks/*`, `scripts/verify.ps1`
+  - File Scope: `.kiro/hooks/*`, `backend/scripts/verify.ps1`
   - Depends on: 없음
   - Acceptance:
     - 저장 시 lint와 test를 실행하는 Hook이 1개만 존재해야 한다.
@@ -234,4 +251,5 @@
 
 - Self Review: TASK-P0-01 완료. 일반 백엔드 FastAPI 골격, 기본 세션 API, 헬스체크, 로컬 테스트 통과.
 - Self Review: TASK-P0-02~10 완료. AI 백엔드 FastAPI 진입점, 결정론적 scoring/matching, Bedrock 경계, fallback, 공용 저장소, 메인-투-AI 연결, 통합 테스트를 모두 구현했다.
+- Self Review: TASK-P0-11 완료. 메인 백엔드 프로필 생성/목록/조회 API와 프론트 공유 문서를 추가했다.
 - Self Review: TASK-P1-03 완료. 단일 EC2 기준 GitHub Actions 배포 워크플로, 원격 배포 스크립트, systemd 서비스 템플릿 추가.

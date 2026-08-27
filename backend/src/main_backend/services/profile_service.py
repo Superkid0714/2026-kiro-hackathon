@@ -1,0 +1,34 @@
+from __future__ import annotations
+
+from copy import deepcopy
+from datetime import UTC, datetime
+from typing import Any
+from uuid import uuid4
+
+from main_backend.services.storage import get_storage_backend
+
+
+class ProfileService:
+    def create_profile(self, payload: dict[str, Any]) -> dict[str, Any]:
+        profile = {
+            "profile_id": f"profile-{uuid4().hex[:8]}",
+            "nickname": payload["nickname"],
+            "age": payload["age"],
+            "gender": payload["gender"],
+            "region": payload["region"],
+            "move_in_period": payload["move_in_period"],
+            "stay_duration_months": payload["stay_duration_months"],
+            "created_at": datetime.now(UTC).isoformat(),
+        }
+        get_storage_backend().save_profile(profile)
+        return deepcopy(profile)
+
+    def list_profiles(self) -> list[dict[str, Any]]:
+        return deepcopy(get_storage_backend().list_profiles())
+
+    def get_profile(self, profile_id: str) -> dict[str, Any] | None:
+        profile = get_storage_backend().get_profile(profile_id)
+        return deepcopy(profile) if profile is not None else None
+
+
+profile_service = ProfileService()

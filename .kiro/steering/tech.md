@@ -42,7 +42,7 @@ inclusion: auto
 ## 검증 명령
 
 ```powershell
-./scripts/verify.ps1
+./backend/scripts/verify.ps1
 ```
 
 이 스크립트는 lint → typecheck → test 순서로 실행한다.

@@ -15,4 +15,4 @@
 - Kiro가 생성한 Spec(`.kiro/specs/`)을 단일 기준 문서로 취급한다.
 - Spec을 임의로 수정하지 않는다. 수정이 필요하면 제안만 한다.
 - 작업 완료 시 `docs/handoff.md`에 핸드오프 기록을 남긴다.
-- 작업 완료 전 `scripts/verify.ps1`를 실행한다.
+- 작업 완료 전 `backend/scripts/verify.ps1`를 실행한다.
