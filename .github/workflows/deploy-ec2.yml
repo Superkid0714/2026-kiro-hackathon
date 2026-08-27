@@ -1,0 +1,32 @@
+name: Deploy EC2
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2 over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script_stop: true
+          command_timeout: 30m
+          script: |
+            export ROOMPACT_BRANCH="${{ github.ref_name }}"
+            export ROOMPACT_REPO="${{ github.server_url }}/${{ github.repository }}.git"
+            export ROOMPACT_APP_DIR="${{ secrets.EC2_APP_DIR }}"
+            export ROOMPACT_PYTHON_BIN="${{ secrets.EC2_PYTHON_BIN }}"
+            mkdir -p "${ROOMPACT_APP_DIR}"
+            cd "${ROOMPACT_APP_DIR}"
+            if [ ! -d ".git" ]; then
+              git clone --branch "${ROOMPACT_BRANCH}" "${ROOMPACT_REPO}" .
+            fi
+            bash scripts/deploy-ec2.sh

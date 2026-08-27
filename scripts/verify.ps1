@@ -10,6 +10,11 @@
 $ErrorActionPreference = "Stop"
 $failed = $false
 
+$venvScripts = Join-Path $PSScriptRoot "..\.venv\Scripts"
+if (Test-Path $venvScripts) {
+    $env:Path = "$((Resolve-Path $venvScripts).Path);$env:Path"
+}
+
 function Write-Step {
     param([string]$Name)
     Write-Host ""

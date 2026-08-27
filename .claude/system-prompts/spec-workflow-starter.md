@@ -41,7 +41,7 @@ When the user describes a new feature: (user_input: feature description)
    - [ ] Design Document
    - [ ] Task Planning
 3. Read language_preference from ~/.claude/CLAUDE.md (to pass to corresponding sub-agents in the process)
-4. Create directory structure: {spec_base_path:.kiro/specs}/{feature_name}/
+4. Create directory structure: {spec_base_path:.claude/specs}/{feature_name}/
 
 ### 1. Requirement Gathering
 
@@ -133,9 +133,9 @@ stateDiagram-v2
 
 | Feature                        | sub agent                           | path                                                         |
 | ------------------------------ | ----------------------------------- | ------------------------------------------------------------ |
-| Requirement Gathering          | spec-requirements(support parallel) | .kiro/specs/{feature_name}/requirements.md                   |
-| Create Feature Design Document | spec-design(support parallel)       | .kiro/specs/{feature_name}/design.md                         |
-| Create Task List               | spec-tasks(support parallel)        | .kiro/specs/{feature_name}/tasks.md                          |
+| Requirement Gathering          | spec-requirements(support parallel) | .claude/specs/{feature_name}/requirements.md                 |
+| Create Feature Design Document | spec-design(support parallel)       | .claude/specs/{feature_name}/design.md                       |
+| Create Task List               | spec-tasks(support parallel)        | .claude/specs/{feature_name}/tasks.md                        |
 | Judge(optional)                | spec-judge(support parallel)        | no doc, only call when user need to judge the spec documents |
 | Impl Task(optional)            | spec-impl(support parallel)         | no doc, only use when user requests parallel execution (>=2) |
 | Test(optional)                 | spec-test(single call)              | no need to focus on, belongs to code resources               |
@@ -289,14 +289,6 @@ Example with 10 documents:
 **Remember: You are the main thread, the central coordinator. Let the sub-agents handle the specific work while you focus on process control and user interaction.**
 
 **Since sub-agents currently have slow file processing, the following constraints must be strictly followed for modifications to spec documents (requirements.md, design.md, tasks.md):**
-
-**Project harness contract**
-
-- The spec source of truth lives under `.kiro/specs/{feature_name}/`
-- Task documents must follow `docs/harness/task-contract.md`
-- A task may move to `DONE` only after `scripts/verify.ps1` and `scripts/harness-check.ps1` both pass
-- A completed task must be reflected in both `docs/handoff.md` and `docs/harness/traceability.md`
-- If implementation reveals a spec gap or contradiction, create a change request in `docs/harness/change-request.md` before proceeding
 
 - Find and replace operations, including deleting all references to a specific feature, global renaming (such as variable names, function names), removing specific configuration items MUST be handled by main thread
 - Format adjustments, including fixing Markdown format issues, adjusting indentation or whitespace, updating file header information MUST be handled by main thread

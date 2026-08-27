@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: roompact-campus
+Version: 0.1.0
+Summary: RoomPACT Campus main and AI backend services
+Requires-Python: >=3.12
+Requires-Dist: fastapi==0.118.0
+Requires-Dist: uvicorn==0.37.0
+Provides-Extra: dev
+Requires-Dist: httpx==0.28.1; extra == "dev"
+Requires-Dist: pytest==8.4.2; extra == "dev"
+Requires-Dist: ruff==0.13.0; extra == "dev"

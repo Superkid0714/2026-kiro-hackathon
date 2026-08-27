@@ -3,6 +3,11 @@
 .env.*
 !.env.example
 
+# === 클라우드 자격증명 / 키 파일 ===
+*.pem
+*.key
+credentials.json
+
 # === 빌드 결과물 ===
 dist/
 build/

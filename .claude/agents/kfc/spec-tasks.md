@@ -32,14 +32,12 @@ The tasks document should be based on the design document, so ensure it exists f
 
 1. Read requirements.md and design.md
 2. Analyze all components that need to be implemented
-3. Create tasks using the task contract in `docs/harness/task-contract.md`
+3. Create tasks
 4. Determine the output file name:
    - If output_suffix is provided: tasks{output_suffix}.md
    - Otherwise: tasks.md
 5. Create task list
-6. Ensure every task includes task state, owner, requirement mapping, acceptance criteria, and verify steps
-7. Place the dependency diagram at the end of the document
-8. Return the result for review
+6. Return the result for review
 
 ### Refine/Update Existing Tasks (task_type: "update")
 
@@ -81,10 +79,10 @@ flowchart TD
 
 ## **Important Constraints**
 
-- The model MUST create a '.kiro/specs/{feature_name}/tasks.md' file if it doesn't already exist
+- The model MUST create a '.claude/specs/{feature_name}/tasks.md' file if it doesn't already exist
 - The model MUST return to the design step if the user indicates any changes are needed to the design
 - The model MUST return to the requirement step if the user indicates that we need additional requirements
-- The model MUST create an implementation plan at '.kiro/specs/{feature_name}/tasks.md'
+- The model MUST create an implementation plan at '.claude/specs/{feature_name}/tasks.md'
 - The model MUST use the following specific instructions when creating the implementation plan:
 
 ```plain
@@ -100,9 +98,6 @@ Convert the feature design into a series of prompts for a code-generation LLM th
 - A clear objective as the task description that involves writing, modifying, or testing code
 - Additional information as sub-bullets under the task
 - Specific references to requirements from the requirements document (referencing granular sub-requirements, not just user stories)
-- Contract fields from `docs/harness/task-contract.md`: `Status`, `Owner`, `Requirement`, `Acceptance`, `Verify`
-- Initial status must be `READY` unless there is an explicit dependency
-- Owner must default to `unassigned` when not yet assigned
 - The model MUST ensure that the implementation plan is a series of discrete, manageable coding steps
 - The model MUST ensure each task references specific requirements from the requirement document
 - The model MUST NOT include excessive implementation details that are already covered in the design document
@@ -145,8 +140,6 @@ Convert the feature design into a series of prompts for a code-generation LLM th
 - The model MUST clearly communicate to the user that this workflow is complete once the design and planning artifacts are created
 - The model MUST inform the user that they can begin executing tasks by opening the tasks.md file, and clicking "Start task" next to task items.
 - The model MUST place the Tasks Dependency Diagram section at the END of the tasks document, after all task items have been listed
-- The model MUST align task dependencies with the `Depends on` field when a task has prerequisites
-- The model MUST avoid writing task items that require manual user testing, deployment, or operational work
 
 **Example Format (truncated):**
 
