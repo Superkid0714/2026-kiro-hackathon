@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field, model_validator
 
-from main_backend.services.auth_service import auth_service
+from main_backend.services.auth_service import AuthServiceError, auth_service
 from main_backend.services.profile_service import profile_service
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
@@ -57,6 +57,7 @@ class ProfileInterviewRequest(BaseModel):
     personal_space_ratio: PersonalSpaceRatioValue
     security_preference: SecurityPreferenceValue
     absence_notice: AbsenceNoticeValue
+    hardcut_conditions: list[str] = Field(default_factory=list, max_length=3)
 
     @model_validator(mode="after")
     def validate_conditional_fields(self) -> "ProfileInterviewRequest":
@@ -73,6 +74,18 @@ class ProfileInterviewRequest(BaseModel):
         else:
             self.pet_preference = None
 
+        normalized_hardcuts: list[str] = []
+        for item in self.hardcut_conditions:
+            value = item.strip()
+            if not value:
+                raise ValueError("hardcut_condition_empty")
+            normalized_hardcuts.append(value)
+
+        if len(normalized_hardcuts) > 3:
+            raise ValueError("hardcut_max_3")
+
+        self.hardcut_conditions = normalized_hardcuts
+
         return self
 
 
@@ -81,6 +94,25 @@ def create_profile(
     payload: ProfileCreateRequest,
     authorization: str | None = Header(default=None),
 ) -> dict[str, object]:
+    try:
+        auth_service.ensure_profile_not_linked(authorization)
+    except AuthServiceError as exc:
+        if exc.code == "profile_already_linked":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=exc.code,
+            ) from exc
+        if exc.code in {"authorization_required", "invalid_access_token", "access_token_expired"}:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=exc.code,
+            ) from exc
+        if exc.code == "user_not_found":
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=exc.code,
+            ) from exc
+        raise
     profile = profile_service.create_profile(payload.model_dump())
     auth_service.link_profile(authorization, profile["profile_id"])
     return {"status": "created", "profile": profile}

@@ -278,6 +278,89 @@ def test_pair_scoring_blocks_indoor_smoker_with_non_smoker() -> None:
     assert "실내 흡연" in pair["conflict_summary"][0]
 
 
+def test_pair_scoring_blocks_candidate_when_hardcut_conflicts() -> None:
+    students = [
+        {
+            "student_id": "S1",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+            "interview": {
+                "wake_up_time": "07:00",
+                "sleep_time": "23:00",
+                "noise_sensitive": False,
+                "quiet_hours_start": "22:00",
+                "cleaning_frequency": "3",
+                "dishes_deadline": "그날 이내에",
+                "guest_frequency": "1",
+                "smokes": False,
+                "drinking_frequency": "2",
+                "home_stay_frequency": "4",
+                "meal_preference": "직접",
+                "home_activity_frequency": "3",
+                "supplies_sharing": "일부 공유",
+                "summer_temperature": 24,
+                "winter_temperature": 21,
+                "pet_ok": False,
+                "conflict_resolution": "즉시 대면",
+                "shared_cost_rule": "반반",
+                "personal_space_access": "노크 혹은 허락",
+                "personal_space_ratio": "반반",
+                "security_preference": "외출시",
+                "absence_notice": "하루 이상",
+                "hardcut_conditions": ["잦은 손님 방문"],
+            },
+            "character": {
+                "rule_score": 60.0,
+                "sharing_score": 45.0,
+                "type_code": "DUDI",
+            },
+        },
+        {
+            "student_id": "S2",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+            "interview": {
+                "wake_up_time": "07:10",
+                "sleep_time": "23:10",
+                "noise_sensitive": False,
+                "quiet_hours_start": "22:10",
+                "cleaning_frequency": "3",
+                "dishes_deadline": "그날 이내에",
+                "guest_frequency": "5",
+                "smokes": False,
+                "drinking_frequency": "2",
+                "home_stay_frequency": "4",
+                "meal_preference": "직접",
+                "home_activity_frequency": "3",
+                "supplies_sharing": "일부 공유",
+                "summer_temperature": 24,
+                "winter_temperature": 21,
+                "pet_ok": False,
+                "conflict_resolution": "즉시 대면",
+                "shared_cost_rule": "반반",
+                "personal_space_access": "노크 혹은 허락",
+                "personal_space_ratio": "반반",
+                "security_preference": "외출시",
+                "absence_notice": "하루 이상",
+                "hardcut_conditions": [],
+            },
+            "character": {
+                "rule_score": 58.0,
+                "sharing_score": 49.0,
+                "type_code": "DUDI",
+            },
+        },
+    ]
+
+    pair = calculate_pair_scores(students)[0]
+
+    assert pair["eligible"] is False
+    assert pair["score"] == 0
+    assert any("손님 방문 빈도" in item for item in pair["conflict_summary"])
+
+
 def test_match_request_returns_fallback_generation_fields() -> None:
     response = client.post(
         "/match",

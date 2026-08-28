@@ -125,3 +125,59 @@ def test_create_profile_links_to_authenticated_user(monkeypatch) -> None:
     assert profile_response.status_code == 201
     assert me_response.status_code == 200
     assert me_body["user"]["profile_id"] == profile_id
+
+
+def test_authenticated_user_cannot_create_second_profile(monkeypatch) -> None:
+    monkeypatch.setenv("JWT_SECRET", "test-secret-key-1234567890")
+    monkeypatch.setenv("KAKAO_REST_API_KEY", "kakao-rest-key")
+    monkeypatch.setenv("KAKAO_REDIRECT_URI", "http://localhost:3000/auth/kakao/callback")
+
+    monkeypatch.setattr(
+        auth_service,
+        "_request_kakao_token",
+        lambda code: {"access_token": f"access-for-{code}"},
+    )
+    monkeypatch.setattr(
+        auth_service,
+        "_request_kakao_user",
+        lambda access_token: {
+            "id": 1122334455,
+            "kakao_account": {
+                "email": "duplicate@example.com",
+                "profile": {"nickname": "중복회원"},
+            },
+            "properties": {"nickname": "중복회원"},
+        },
+    )
+
+    exchange = client.post("/auth/kakao/exchange", json={"code": "sample-code"}).json()
+    token = exchange["access_token"]
+
+    first_response = client.post(
+        "/profiles",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "nickname": "첫프로필",
+            "age": 22,
+            "gender": "female",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+        },
+    )
+    second_response = client.post(
+        "/profiles",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "nickname": "두번째프로필",
+            "age": 23,
+            "gender": "female",
+            "region": "광주광역시",
+            "move_in_period": "2026-10",
+            "stay_duration_months": 12,
+        },
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 409
+    assert second_response.json()["detail"] == "profile_already_linked"

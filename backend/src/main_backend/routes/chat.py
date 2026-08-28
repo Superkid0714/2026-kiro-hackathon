@@ -19,6 +19,10 @@ class MatchRequestAcceptRequest(BaseModel):
     profile_id: str = Field(min_length=1, max_length=64)
 
 
+class RoommateConfirmationRequest(BaseModel):
+    profile_id: str = Field(min_length=1, max_length=64)
+
+
 @profiles_router.post("/{profile_id}/match-requests", status_code=status.HTTP_201_CREATED)
 def create_match_request(profile_id: str, payload: ChatRoomCreateRequest) -> dict[str, object]:
     try:
@@ -31,6 +35,18 @@ def create_match_request(profile_id: str, payload: ChatRoomCreateRequest) -> dic
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
 
     return {"status": request["status"], "match_request": request}
+
+
+@profiles_router.get("/{profile_id}/match-requests")
+def list_match_requests(profile_id: str) -> dict[str, object]:
+    try:
+        requests = chat_service.list_match_requests(profile_id)
+    except ChatServiceError as exc:
+        if exc.code == "profile_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.code) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+
+    return {"status": "ok", "match_requests": requests}
 
 
 @router.post("/match-requests/{request_id}/accept")
@@ -73,6 +89,42 @@ def get_chat_room_messages(room_id: str) -> dict[str, object]:
         "room": room,
         "messages": chat_service.list_messages(room_id),
     }
+
+
+@router.post("/chat-rooms/{room_id}/roommate-confirmation")
+async def confirm_roommate(room_id: str, payload: RoommateConfirmationRequest) -> dict[str, object]:
+    try:
+        result = chat_service.confirm_roommate(room_id, payload.profile_id)
+    except ChatServiceError as exc:
+        if exc.code == "chat_room_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.code) from exc
+        if exc.code == "chat_room_forbidden":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=exc.code) from exc
+        if exc.code == "roommate_confirmation_requires_profile_interview":
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=exc.code) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+
+    await chat_service.broadcast_roommate_confirmation(room_id, result)
+    return result
+
+
+@router.get("/chat-rooms/{room_id}/pact")
+def get_roommate_pact(
+    room_id: str,
+    profile_id: str = Query(..., min_length=1),
+) -> dict[str, object]:
+    try:
+        pact = chat_service.get_roommate_pact(room_id, profile_id)
+    except ChatServiceError as exc:
+        if exc.code == "chat_room_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.code) from exc
+        if exc.code == "chat_room_forbidden":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=exc.code) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+
+    if pact is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="roommate_pact_not_found")
+    return {"status": "ok", "pact": pact}
 
 
 @router.websocket("/ws/chat-rooms/{room_id}")

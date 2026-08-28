@@ -72,6 +72,17 @@ class AuthService:
             raise AuthServiceError("user_not_found")
         return self._serialize_user(user)
 
+    def ensure_profile_not_linked(self, authorization: str | None) -> None:
+        if not authorization:
+            return
+        token = self._extract_bearer_token(authorization)
+        payload = self._verify_service_token(token)
+        user = get_storage_backend().get_user(payload["sub"])
+        if user is None:
+            raise AuthServiceError("user_not_found")
+        if user.get("profile_id"):
+            raise AuthServiceError("profile_already_linked")
+
     def link_profile(self, authorization: str | None, profile_id: str) -> None:
         if not authorization:
             return

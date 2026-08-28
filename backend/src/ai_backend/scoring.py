@@ -18,6 +18,8 @@ def _score_pair(student_a: dict[str, Any], student_b: dict[str, Any]) -> dict[st
         student_a,
         student_b,
     ) + _required_rule_conflicts(student_b, student_a)
+    conflicts += _hardcut_conflicts(student_a, student_b)
+    conflicts += _hardcut_conflicts(student_b, student_a)
 
     positive_factors: list[tuple[int, str]] = []
     mismatch_factors: list[str] = []
@@ -383,6 +385,79 @@ def _required_rule_conflicts(
                 f"{other_student['student_id']}가 충족하지 않습니다"
             )
     return conflicts
+
+
+def _hardcut_conflicts(
+    source_student: dict[str, Any],
+    other_student: dict[str, Any],
+) -> list[str]:
+    source_interview = dict(source_student.get("interview", {}))
+    other_interview = dict(other_student.get("interview", {}))
+    conditions = source_interview.get("hardcut_conditions")
+    if not isinstance(conditions, list) or not conditions:
+        return []
+
+    conflicts: list[str] = []
+    for raw_condition in conditions:
+        condition = _string_or_none(raw_condition)
+        if not condition:
+            continue
+
+        message = _match_hardcut_condition(condition, other_interview)
+        if message and message not in conflicts:
+            conflicts.append(message)
+    return conflicts
+
+
+def _match_hardcut_condition(condition: str, other_interview: dict[str, Any]) -> str | None:
+    guest_frequency = _frequency_value(other_interview.get("guest_frequency"))
+    cleaning_frequency = _frequency_value(other_interview.get("cleaning_frequency"))
+    quiet_start = _time_to_minutes(other_interview.get("quiet_hours_start"))
+    sleep_time = _time_to_minutes(other_interview.get("sleep_time"))
+    home_activity = _frequency_value(other_interview.get("home_activity_frequency"))
+
+    if condition == "실내 흡연":
+        if bool(other_interview.get("smokes")) and other_interview.get("smoking_place") == "집 안":
+            return "상대가 실내 흡연 성향이라 Hardcut 조건과 충돌합니다"
+        return None
+
+    if condition == "잦은 손님 방문":
+        if guest_frequency is not None and guest_frequency >= 4:
+            return "상대의 손님 방문 빈도가 높아 Hardcut 조건과 충돌합니다"
+        return None
+
+    if condition == "반려동물 필수":
+        if bool(other_interview.get("pet_ok")):
+            return "상대가 반려동물 동거를 전제로 생활할 가능성이 있어 Hardcut 조건과 충돌합니다"
+        return None
+
+    if condition == "주야간 근무 불일치":
+        wake_time = _time_to_minutes(other_interview.get("wake_up_time"))
+        if (
+            wake_time is not None
+            and sleep_time is not None
+            and (wake_time >= 11 * 60 or sleep_time >= 1 * 60)
+        ):
+            return "상대의 생활 리듬이 늦은 시간대로 치우쳐 있어 Hardcut 조건과 충돌합니다"
+        return None
+
+    if condition == "공용공간 미청소":
+        if (
+            cleaning_frequency is not None
+            and cleaning_frequency <= 2
+        ) or other_interview.get("dishes_deadline") == "다음날 아침":
+            return "상대의 공용공간 정리 기준이 낮아 Hardcut 조건과 충돌합니다"
+        return None
+
+    if condition == "늦은 밤 소음":
+        late_quiet = quiet_start is not None and quiet_start >= 23 * 60
+        active_at_home = home_activity is not None and home_activity >= 5
+        late_sleep = sleep_time is not None and sleep_time >= 1 * 60
+        if late_quiet or (active_at_home and late_sleep):
+            return "상대가 늦은 밤까지 활동할 가능성이 높아 Hardcut 조건과 충돌합니다"
+        return None
+
+    return None
 
 
 def _has_interview(student: dict[str, Any]) -> bool:

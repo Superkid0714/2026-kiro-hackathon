@@ -86,3 +86,12 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 
 CREATE INDEX IF NOT EXISTS idx_chat_messages_room_id_created_at
     ON chat_messages (room_id, created_at);
+
+CREATE TABLE IF NOT EXISTS roommate_pacts (
+    room_id TEXT PRIMARY KEY REFERENCES chat_rooms(room_id) ON DELETE CASCADE,
+    participant_a_profile_id TEXT NOT NULL REFERENCES profiles(profile_id) ON DELETE CASCADE,
+    participant_b_profile_id TEXT NOT NULL REFERENCES profiles(profile_id) ON DELETE CASCADE,
+    payload JSONB NOT NULL,
+    generated_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL
+);

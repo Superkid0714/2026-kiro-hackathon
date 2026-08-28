@@ -30,6 +30,7 @@ def _interview_payload(**overrides):
         "personal_space_ratio": "반반",
         "security_preference": "외출시",
         "absence_notice": "하루 이상",
+        "hardcut_conditions": [],
     }
     payload.update(overrides)
     return payload
@@ -116,6 +117,7 @@ def test_save_profile_interview_returns_expected_shape() -> None:
     assert body["interview"]["wake_up_time"] == "07:00"
     assert body["interview"]["smoking_type"] is None
     assert body["interview"]["pet_preference"] == "고양이"
+    assert body["interview"]["hardcut_conditions"] == []
     assert body["character"]["type_code"] in {"ROO", "DUDI", "PEE", "MOMO"}
     assert body["character"]["type_name"] in {
         "함께둥글형",
@@ -171,6 +173,7 @@ def test_get_profile_interview_returns_saved_interview() -> None:
             personal_space_ratio="필요한 만큼",
             security_preference="항시 잠금",
             absence_notice="항상",
+            hardcut_conditions=["늦은 시간 악기 연주"],
         ),
     )
 
@@ -183,8 +186,38 @@ def test_get_profile_interview_returns_saved_interview() -> None:
     assert body["interview"]["smoking_type"] == "전자담배"
     assert body["interview"]["smoking_place"] == "밖"
     assert body["interview"]["pet_preference"] is None
+    assert body["interview"]["hardcut_conditions"] == ["늦은 시간 악기 연주"]
     assert body["character"]["type_code"] in {"ROO", "DUDI", "PEE", "MOMO"}
     assert body["character"]["top_factors"]
+
+
+def test_save_profile_interview_rejects_more_than_three_hardcuts() -> None:
+    create_response = client.post(
+        "/profiles",
+        json={
+            "nickname": "지우",
+            "age": 23,
+            "gender": "female",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+        },
+    )
+    profile_id = create_response.json()["profile"]["profile_id"]
+
+    response = client.put(
+        f"/profiles/{profile_id}/interview",
+        json=_interview_payload(
+            hardcut_conditions=[
+                "실내 흡연",
+                "반려동물 필수",
+                "잦은 손님 방문",
+                "주야간 근무 불일치",
+            ],
+        ),
+    )
+
+    assert response.status_code == 422
 
 
 def test_save_profile_interview_unknown_profile_returns_not_found() -> None:
@@ -259,6 +292,54 @@ def test_recommendations_are_generated_and_refresh_existing_profiles() -> None:
     assert first_recommendations.status_code == 200
     assert first_body["recommendations"][0]["profile_id"] == second_profile
     assert first_body["recommendations"][0]["score"] >= 70
+
+
+def test_recommendations_exclude_hardcut_conflicts() -> None:
+    first_profile = client.post(
+        "/profiles",
+        json={
+            "nickname": "민수",
+            "age": 22,
+            "gender": "male",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+        },
+    ).json()["profile"]["profile_id"]
+    second_profile = client.post(
+        "/profiles",
+        json={
+            "nickname": "서연",
+            "age": 21,
+            "gender": "female",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+        },
+    ).json()["profile"]["profile_id"]
+
+    first_save = client.put(
+        f"/profiles/{first_profile}/interview",
+        json=_interview_payload(hardcut_conditions=["잦은 손님 방문"]),
+    )
+    assert first_save.status_code == 200
+
+    second_save = client.put(
+        f"/profiles/{second_profile}/interview",
+        json=_interview_payload(
+            wake_up_time="07:10",
+            sleep_time="23:10",
+            quiet_hours_start="22:10",
+            guest_frequency="5",
+            hardcut_conditions=[],
+        ),
+    )
+    assert second_save.status_code == 200
+
+    first_recommendations = client.get(f"/profiles/{first_profile}/recommendations")
+    first_body = first_recommendations.json()
+    assert first_recommendations.status_code == 200
+    assert first_body["recommendations"] == []
 
 
 def test_get_recommendations_for_unknown_profile_returns_not_found() -> None:

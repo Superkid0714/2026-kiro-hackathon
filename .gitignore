@@ -46,6 +46,9 @@ coverage/
 .nyc_output/
 htmlcov/
 
+# === 로컬 백엔드 런타임 데이터 ===
+backend/data/
+
 # === Kiro — specs와 steering은 반드시 포함 ===
 # .kiro/specs/ — Git에 포함 (추적됨)
 # .kiro/steering/ — Git에 포함 (추적됨)

@@ -10,6 +10,7 @@ from uuid import uuid4
 
 from fastapi import WebSocket
 
+from ai_backend.pact import generate_roommate_pact
 from main_backend.services.storage import get_storage_backend
 
 
@@ -23,6 +24,56 @@ class ChatService:
     def __init__(self) -> None:
         self._connections: dict[str, set[WebSocket]] = defaultdict(set)
         self._lock = asyncio.Lock()
+
+    @staticmethod
+    def _ensure_roommate_confirmation(room: dict[str, Any]) -> dict[str, Any]:
+        confirmation = room.get("roommate_confirmation") or {}
+        participant_a_profile_id = room["participant_a_profile_id"]
+        participant_b_profile_id = room["participant_b_profile_id"]
+        participant_a_confirmed_at = confirmation.get("participant_a_confirmed_at")
+        participant_b_confirmed_at = confirmation.get("participant_b_confirmed_at")
+
+        if participant_a_confirmed_at and participant_b_confirmed_at:
+            status = "confirmed"
+            pending_for_profile_id = None
+            confirmed_profile_ids = [participant_a_profile_id, participant_b_profile_id]
+            confirmed_at = room.get("roommate_confirmed_at") or max(
+                participant_a_confirmed_at,
+                participant_b_confirmed_at,
+            )
+        elif participant_a_confirmed_at or participant_b_confirmed_at:
+            status = "pending"
+            pending_for_profile_id = (
+                participant_b_profile_id
+                if participant_a_confirmed_at
+                else participant_a_profile_id
+            )
+            confirmed_profile_ids = [
+                profile_id
+                for profile_id, timestamp in (
+                    (participant_a_profile_id, participant_a_confirmed_at),
+                    (participant_b_profile_id, participant_b_confirmed_at),
+                )
+                if timestamp
+            ]
+            confirmed_at = None
+        else:
+            status = "idle"
+            pending_for_profile_id = None
+            confirmed_profile_ids = []
+            confirmed_at = None
+
+        normalized = {
+            "status": status,
+            "requested_by_profile_id": confirmation.get("requested_by_profile_id"),
+            "pending_for_profile_id": pending_for_profile_id,
+            "participant_a_confirmed_at": participant_a_confirmed_at,
+            "participant_b_confirmed_at": participant_b_confirmed_at,
+            "confirmed_profile_ids": confirmed_profile_ids,
+            "confirmed_at": confirmed_at,
+        }
+        room["roommate_confirmation"] = normalized
+        return normalized
 
     def create_or_get_match_request(
         self, profile_id: str, other_profile_id: str
@@ -84,6 +135,41 @@ class ChatService:
         storage.save_match_request(request)
         return deepcopy(request)
 
+    def list_match_requests(self, profile_id: str) -> list[dict[str, Any]]:
+        storage = get_storage_backend()
+        if storage.get_profile(profile_id) is None:
+            raise ChatServiceError("profile_not_found")
+
+        requests = storage.list_match_requests_for_profile(profile_id)
+        enriched: list[dict[str, Any]] = []
+        for request in requests:
+            peer_id = (
+                request["target_profile_id"]
+                if request["requester_profile_id"] == profile_id
+                else request["requester_profile_id"]
+            )
+            peer_profile = storage.get_profile(peer_id)
+            room_id = None
+            if request["status"] == "accepted":
+                room = storage.find_chat_room(
+                    request["participant_a_profile_id"],
+                    request["participant_b_profile_id"],
+                )
+                room_id = room["room_id"] if room is not None else None
+
+            enriched.append(
+                {
+                    **deepcopy(request),
+                    "peer_profile_id": peer_id,
+                    "peer_nickname": peer_profile["nickname"] if peer_profile else None,
+                    "peer_region": peer_profile["region"] if peer_profile else None,
+                    "room_id": room_id,
+                }
+            )
+
+        enriched.sort(key=lambda item: item.get("updated_at") or "", reverse=True)
+        return enriched
+
     def create_or_get_room(self, profile_id: str, other_profile_id: str) -> dict[str, Any]:
         if profile_id == other_profile_id:
             raise ChatServiceError("cannot_chat_with_self")
@@ -126,12 +212,108 @@ class ChatService:
             "updated_at": now,
         }
         room["participants"].sort(key=lambda item: item["profile_id"])
+        self._ensure_roommate_confirmation(room)
         storage.save_chat_room(room)
         return deepcopy(room)
 
     def get_room(self, room_id: str) -> dict[str, Any] | None:
         room = get_storage_backend().get_chat_room(room_id)
-        return deepcopy(room) if room is not None else None
+        if room is None:
+            return None
+        self._ensure_roommate_confirmation(room)
+        return deepcopy(room)
+
+    def confirm_roommate(self, room_id: str, profile_id: str) -> dict[str, Any]:
+        storage = get_storage_backend()
+        room = storage.get_chat_room(room_id)
+        if room is None:
+            raise ChatServiceError("chat_room_not_found")
+
+        participants = {
+            room["participant_a_profile_id"],
+            room["participant_b_profile_id"],
+        }
+        if profile_id not in participants:
+            raise ChatServiceError("chat_room_forbidden")
+
+        confirmation = self._ensure_roommate_confirmation(room)
+
+        profile_a = storage.get_profile(room["participant_a_profile_id"])
+        profile_b = storage.get_profile(room["participant_b_profile_id"])
+        interview_a_record = storage.get_profile_interview(room["participant_a_profile_id"])
+        interview_b_record = storage.get_profile_interview(room["participant_b_profile_id"])
+        if (
+            profile_a is None
+            or profile_b is None
+            or interview_a_record is None
+            or interview_b_record is None
+        ):
+            raise ChatServiceError("roommate_confirmation_requires_profile_interview")
+
+        if confirmation["status"] == "confirmed":
+            existing = storage.get_roommate_pact(room_id)
+            if existing is not None:
+                return {
+                    "status": "confirmed",
+                    "room": deepcopy(room),
+                    "pact": deepcopy(existing),
+                }
+
+        now = datetime.now(UTC).isoformat()
+        if profile_id == room["participant_a_profile_id"]:
+            confirmation["participant_a_confirmed_at"] = (
+                confirmation["participant_a_confirmed_at"] or now
+            )
+        else:
+            confirmation["participant_b_confirmed_at"] = (
+                confirmation["participant_b_confirmed_at"] or now
+            )
+        confirmation["requested_by_profile_id"] = profile_id
+        self._ensure_roommate_confirmation(room)
+
+        if room["roommate_confirmation"]["status"] != "confirmed":
+            room["updated_at"] = now
+            storage.save_chat_room(room)
+            return {
+                "status": "pending",
+                "room": deepcopy(room),
+                "pending_for_profile_id": room["roommate_confirmation"]["pending_for_profile_id"],
+            }
+
+        confirmed_at = room["roommate_confirmation"]["confirmed_at"] or now
+        room["roommate_confirmed_at"] = confirmed_at
+        room["roommate_confirmed_by_profile_id"] = profile_id
+        room["updated_at"] = confirmed_at
+        storage.save_chat_room(room)
+
+        pact = generate_roommate_pact(
+            room_id=room_id,
+            profile_a=profile_a,
+            profile_b=profile_b,
+            interview_a=interview_a_record["interview"],
+            interview_b=interview_b_record["interview"],
+            character_a=interview_a_record.get("character", {}),
+            character_b=interview_b_record.get("character", {}),
+        )
+
+        storage.save_roommate_pact(room_id, pact)
+        return {
+            "status": "confirmed",
+            "room": deepcopy(room),
+            "pact": deepcopy(pact),
+        }
+
+    def get_roommate_pact(self, room_id: str, profile_id: str) -> dict[str, Any] | None:
+        room = self.get_room(room_id)
+        if room is None:
+            raise ChatServiceError("chat_room_not_found")
+        if profile_id not in {
+            room["participant_a_profile_id"],
+            room["participant_b_profile_id"],
+        }:
+            raise ChatServiceError("chat_room_forbidden")
+        pact = get_storage_backend().get_roommate_pact(room_id)
+        return deepcopy(pact) if pact is not None else None
 
     def list_messages(self, room_id: str) -> list[dict[str, Any]]:
         return deepcopy(get_storage_backend().list_chat_messages(room_id))
@@ -190,6 +372,28 @@ class ChatService:
         for websocket in recipients:
             try:
                 await websocket.send_text(payload)
+            except RuntimeError:
+                stale.append(websocket)
+
+        for websocket in stale:
+            await self.disconnect(room_id, websocket)
+
+    async def broadcast_roommate_confirmation(
+        self,
+        room_id: str,
+        payload: dict[str, Any],
+    ) -> None:
+        envelope = json.dumps(
+            {"type": "roommate_confirmation", **payload},
+            ensure_ascii=False,
+        )
+        async with self._lock:
+            recipients = list(self._connections.get(room_id, set()))
+
+        stale: list[WebSocket] = []
+        for websocket in recipients:
+            try:
+                await websocket.send_text(envelope)
             except RuntimeError:
                 stale.append(websocket)
 

@@ -66,9 +66,15 @@ class StorageBackend(Protocol):
 
     def get_match_request(self, request_id: str) -> dict[str, Any] | None: ...
 
+    def list_match_requests_for_profile(self, profile_id: str) -> list[dict[str, Any]]: ...
+
     def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None: ...
 
     def list_chat_messages(self, room_id: str) -> list[dict[str, Any]]: ...
+
+    def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None: ...
+
+    def get_roommate_pact(self, room_id: str) -> dict[str, Any] | None: ...
 
 
 @dataclass
@@ -237,6 +243,16 @@ class LocalJsonStorage:
             request = payload["match_requests"].get(request_id)
             return deepcopy(request) if request is not None else None
 
+    def list_match_requests_for_profile(self, profile_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            payload = self._read()
+            return [
+                deepcopy(request)
+                for request in payload["match_requests"].values()
+                if request["participant_a_profile_id"] == profile_id
+                or request["participant_b_profile_id"] == profile_id
+            ]
+
     def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None:
         with self._lock:
             payload = self._read()
@@ -252,6 +268,18 @@ class LocalJsonStorage:
             payload = self._read()
             return deepcopy(payload["chat_messages"].get(room_id, []))
 
+    def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["roommate_pacts"][room_id] = deepcopy(pact)
+            self._write(payload)
+
+    def get_roommate_pact(self, room_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            pact = payload["roommate_pacts"].get(room_id)
+            return deepcopy(pact) if pact is not None else None
+
     def _read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists():
             return {
@@ -264,6 +292,7 @@ class LocalJsonStorage:
                 "chat_rooms": {},
                 "match_requests": {},
                 "chat_messages": {},
+                "roommate_pacts": {},
             }
 
         with self.path.open("r", encoding="utf-8") as handle:
@@ -279,6 +308,7 @@ class LocalJsonStorage:
             "chat_rooms": content.get("chat_rooms", {}),
             "match_requests": content.get("match_requests", {}),
             "chat_messages": content.get("chat_messages", {}),
+            "roommate_pacts": content.get("roommate_pacts", {}),
         }
 
     def _write(self, payload: dict[str, dict[str, Any]]) -> None:
@@ -518,6 +548,20 @@ class DynamoDbStorage:
         item = response.get("Item")
         return deepcopy(item["payload"]) if item is not None else None
 
+    def list_match_requests_for_profile(self, profile_id: str) -> list[dict[str, Any]]:
+        response = self._table.scan(
+            FilterExpression=(
+                "#sk = :request AND "
+                "(participant_a_profile_id = :profile_id OR participant_b_profile_id = :profile_id)"
+            ),
+            ExpressionAttributeNames={"#sk": "sk"},
+            ExpressionAttributeValues={
+                ":request": "REQUEST",
+                ":profile_id": profile_id,
+            },
+        )
+        return [deepcopy(item["payload"]) for item in response.get("Items", [])]
+
     def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None:
         self._table.put_item(
             Item=self._item(
@@ -543,6 +587,21 @@ class DynamoDbStorage:
         items = response.get("Items", [])
         items.sort(key=lambda item: item["payload"]["sent_at"])
         return [deepcopy(item["payload"]) for item in items]
+
+    def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"CHATROOM#{room_id}",
+                "ROOMMATE_PACT",
+                pact,
+                "ready",
+            )
+        )
+
+    def get_roommate_pact(self, room_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(Key={"pk": f"CHATROOM#{room_id}", "sk": "ROOMMATE_PACT"})
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
 
     @staticmethod
     def _item(
@@ -928,6 +987,19 @@ class PostgresStorage:
             row = cursor.fetchone()
             return deepcopy(row["payload"]) if row is not None else None
 
+    def list_match_requests_for_profile(self, profile_id: str) -> list[dict[str, Any]]:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                """
+                SELECT payload
+                FROM match_requests
+                WHERE participant_a_profile_id = %s OR participant_b_profile_id = %s
+                """,
+                (profile_id, profile_id),
+            )
+            rows = cursor.fetchall()
+            return [deepcopy(row["payload"]) for row in rows]
+
     def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None:
         with self._cursor() as cursor:
             cursor.execute(
@@ -968,6 +1040,39 @@ class PostgresStorage:
             )
             rows = cursor.fetchall()
             return [deepcopy(row["payload"]) for row in rows]
+
+    def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO roommate_pacts (
+                    room_id, participant_a_profile_id, participant_b_profile_id, payload,
+                    generated_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s::jsonb, %s, %s)
+                ON CONFLICT (room_id) DO UPDATE SET
+                    payload = EXCLUDED.payload,
+                    generated_at = EXCLUDED.generated_at,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (
+                    room_id,
+                    pact["participant_a_profile_id"],
+                    pact["participant_b_profile_id"],
+                    json.dumps(pact, ensure_ascii=False),
+                    pact["generated_at"],
+                    pact["updated_at"],
+                ),
+            )
+
+    def get_roommate_pact(self, room_id: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                "SELECT payload FROM roommate_pacts WHERE room_id = %s",
+                (room_id,),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
 
     @contextmanager
     def _cursor(self, row_factory: str | None = None) -> Iterator[Any]:

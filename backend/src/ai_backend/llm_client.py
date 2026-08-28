@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import os
 from typing import Any
+from urllib import error, parse, request
 
 
 class LLMClientError(Exception):
@@ -11,42 +13,69 @@ class LLMClientError(Exception):
         self.message = message
 
 
-class BedrockLLMClient:
-    def __init__(self, *, model_id: str | None = None, region_name: str | None = None) -> None:
-        self._model_id = model_id or os.getenv("BEDROCK_MODEL_ID")
-        self._region_name = region_name or os.getenv("AWS_REGION")
-        self._client = self._build_client()
+class GeminiLLMClient:
+    def __init__(self, *, model_id: str | None = None, api_key: str | None = None) -> None:
+        self._model_id = model_id or os.getenv("GEMINI_MODEL")
+        self._api_key = api_key or os.getenv("GEMINI_API_KEY")
+        self._endpoint = self._build_endpoint()
 
-    def _build_client(self) -> Any:
+    def _build_endpoint(self) -> str:
         if not self._model_id:
-            raise LLMClientError("bedrock_not_configured", "BEDROCK_MODEL_ID is not configured.")
+            raise LLMClientError("gemini_not_configured", "GEMINI_MODEL is not configured.")
+        if not self._api_key:
+            raise LLMClientError("gemini_key_not_configured", "GEMINI_API_KEY is not configured.")
 
-        try:
-            import boto3
-        except ImportError as exc:
-            raise LLMClientError("boto3_not_installed", "boto3 is not installed.") from exc
-
-        return boto3.client("bedrock-runtime", region_name=self._region_name)
+        model_name = self._model_id
+        if model_name.startswith("models/"):
+            model_name = model_name[len("models/") :]
+        encoded_key = parse.quote(self._api_key, safe="")
+        return (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"{model_name}:generateContent?key={encoded_key}"
+        )
 
     def generate(self, kind: str, payload: dict[str, Any]) -> str:
         prompt = self._build_prompt(kind, payload)
+        request_body = {
+            "contents": [
+                {
+                    "parts": [
+                        {
+                            "text": prompt,
+                        }
+                    ]
+                }
+            ],
+            "generationConfig": {
+                "temperature": 0.2,
+                "maxOutputTokens": 300,
+            },
+        }
+        http_request = request.Request(
+            self._endpoint,
+            data=json.dumps(request_body).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
         try:
-            response = self._client.converse(
-                modelId=self._model_id,
-                messages=[{"role": "user", "content": [{"text": prompt}]}],
-                inferenceConfig={"temperature": 0.2, "maxTokens": 300},
-            )
-        except Exception as exc:  # pragma: no cover
-            raise LLMClientError("bedrock_request_failed", str(exc)) from exc
+            with request.urlopen(http_request, timeout=20) as response:
+                raw_response = response.read().decode("utf-8")
+        except error.HTTPError as exc:  # pragma: no cover
+            detail = exc.read().decode("utf-8", errors="replace")
+            raise LLMClientError("gemini_request_failed", detail or str(exc)) from exc
+        except error.URLError as exc:  # pragma: no cover
+            raise LLMClientError("gemini_request_failed", str(exc)) from exc
 
         try:
-            blocks = response["output"]["message"]["content"]
-            text = "".join(block.get("text", "") for block in blocks).strip()
+            response_body = json.loads(raw_response)
+            candidates = response_body["candidates"]
+            parts = candidates[0]["content"]["parts"]
+            text = "".join(part.get("text", "") for part in parts).strip()
         except Exception as exc:  # pragma: no cover
-            raise LLMClientError("bedrock_response_invalid", str(exc)) from exc
+            raise LLMClientError("gemini_response_invalid", str(exc)) from exc
 
         if not text:
-            raise LLMClientError("bedrock_response_empty", "Bedrock returned an empty response.")
+            raise LLMClientError("gemini_response_empty", "Gemini returned an empty response.")
         return text
 
     @staticmethod
@@ -75,13 +104,13 @@ class BedrockLLMClient:
         raise LLMClientError("unsupported_llm_kind", f"Unsupported kind: {kind}")
 
 
-_client: BedrockLLMClient | None = None
+_client: GeminiLLMClient | None = None
 
 
-def get_llm_client() -> BedrockLLMClient:
+def get_llm_client() -> GeminiLLMClient:
     global _client
     if _client is None:
-        _client = BedrockLLMClient()
+        _client = GeminiLLMClient()
     return _client
 
 
