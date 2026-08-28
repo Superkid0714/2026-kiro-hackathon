@@ -84,11 +84,6 @@ class ChatService:
         storage.save_match_request(request)
         return deepcopy(request)
 
-    def get_match_request_between(self, profile_id: str, other_profile_id: str) -> dict[str, Any] | None:
-        participant_a, participant_b = sorted([profile_id, other_profile_id])
-        request = get_storage_backend().find_match_request(participant_a, participant_b)
-        return deepcopy(request) if request is not None else None
-
     def create_or_get_room(self, profile_id: str, other_profile_id: str) -> dict[str, Any]:
         if profile_id == other_profile_id:
             raise ChatServiceError("cannot_chat_with_self")
