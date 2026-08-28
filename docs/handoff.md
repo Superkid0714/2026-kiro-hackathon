@@ -1208,6 +1208,16 @@
   - EC2 프론트 배포 반영 확인
 - **비고**: `생활 성향 한눈에 보기` 카드를 기존 단순 점수 레이아웃에 가깝게 되돌리고, 유형별 그래프 색상과 설정 모달 포인트 컬러를 분기했다.
 
+### 2026-08-29 — 프로젝트 README 정리
+
+- **Agent**: Codex
+- **Task**: Roomonic 전체 아키텍처, 기술 스택, 주요 흐름, 배포 구조를 루트 README로 정리
+- **변경 파일**:
+  - `README.md`
+  - `docs/handoff.md`
+- **검증 결과**: PASS — README 내 실제 API 키/시크릿 값 미포함 확인
+- **비고**: 현재 구현 기준인 Next.js, FastAPI, PostgreSQL on EC2, Gemini API, Naver Map, 공공데이터포털 구조를 중심으로 작성했다.
+
 ### 2026-08-29 — EC2 배포 소스 로컬 동기화 및 GitHub 저장
 
 - **Agent**: Codex
