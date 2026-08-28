@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from main_backend.services.chat_service import chat_service
@@ -173,7 +172,8 @@ def _cleanup_demo_rows(storage: Any) -> None:
     if isinstance(storage, PostgresStorage):
         with storage._cursor() as cursor:
             cursor.execute(
-                "DELETE FROM chat_messages WHERE room_id LIKE 'room-demo-%' OR message_id LIKE 'msg-demo-%'"
+                "DELETE FROM chat_messages "
+                "WHERE room_id LIKE 'room-demo-%' OR message_id LIKE 'msg-demo-%'"
             )
             cursor.execute(
                 "DELETE FROM chat_rooms WHERE participant_a_profile_id LIKE 'demo-profile-%' "
@@ -250,7 +250,10 @@ def _seed_profiles() -> None:
 def _seed_interviews() -> None:
     for profile in DEMO_PROFILES:
         interview = DEMO_INTERVIEWS[profile["profile_id"]]
-        result = profile_service.save_interview(profile["profile_id"], deepcopy(interview))
+        result = profile_service.save_interview(
+            profile["profile_id"],
+            deepcopy(interview),
+        )
         if result is None:
             raise RuntimeError(f"seed_interview_failed:{profile['profile_id']}")
 
@@ -297,7 +300,9 @@ def seed_practice_data() -> dict[str, Any]:
     chat = _seed_chat_demo()
 
     recommendations = {
-        profile["profile_id"]: get_storage_backend().get_profile_recommendations(profile["profile_id"])
+        profile["profile_id"]: get_storage_backend().get_profile_recommendations(
+            profile["profile_id"]
+        )
         for profile in DEMO_PROFILES
     }
     return {
