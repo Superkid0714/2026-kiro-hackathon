@@ -41,6 +41,12 @@ desktop.ini
 *.log
 logs/
 
+# === 배포/동기화 임시 산출물 ===
+*.tgz
+ec2_snapshot/
+ec2_priority_sync/
+snapshots/
+
 # === 테스트 커버리지 ===
 coverage/
 .nyc_output/

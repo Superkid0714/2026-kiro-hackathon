@@ -35,6 +35,26 @@ class ProfileService:
         profile = get_storage_backend().get_profile(profile_id)
         return deepcopy(profile) if profile is not None else None
 
+    def update_profile(self, profile_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
+        storage = get_storage_backend()
+        profile = storage.get_profile(profile_id)
+        if profile is None:
+            return None
+
+        profile.update(
+            {
+                "nickname": payload["nickname"],
+                "age": payload["age"],
+                "gender": payload["gender"],
+                "region": payload["region"],
+                "move_in_period": payload["move_in_period"],
+                "stay_duration_months": payload["stay_duration_months"],
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        storage.save_profile(profile)
+        return deepcopy(profile)
+
     def save_interview(self, profile_id: str, payload: dict[str, Any]) -> dict[str, Any] | None:
         profile = get_storage_backend().get_profile(profile_id)
         if profile is None:

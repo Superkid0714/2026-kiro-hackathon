@@ -5,7 +5,7 @@ export const CANDIDATES = [
     score: 91,
     region: '광주',
     moveIn: '2025년 8월',
-    emoji: '🧑',
+    imagePath: '/images/characters/Dudi.png',
     bg: 'bg-peachSoft',
     goodPoints: [
       { text: '수면 패턴이 비슷해요', tag: '수면' },
@@ -17,6 +17,8 @@ export const CANDIDATES = [
       { text: '실내 취향이 조금 달라요', tag: '공간' },
     ],
     hardcuts: ['실내 흡연', '반려동물 필수'],
+    typeCode: 'DUDI',
+    typeName: '함께정돈형',
   },
   {
     id: '2',
@@ -24,7 +26,7 @@ export const CANDIDATES = [
     score: 84,
     region: '광주',
     moveIn: '2025년 9월',
-    emoji: '🧑‍🦱',
+    imagePath: '/images/characters/Pee.png',
     bg: 'bg-mintSoft',
     goodPoints: [
       { text: '기상 시간이 비슷해요', tag: '수면' },
@@ -34,6 +36,8 @@ export const CANDIDATES = [
       { text: '공용 물품 정리 방식이 달라요', tag: '생활습관' },
     ],
     hardcuts: ['주야간 근무 불일치'],
+    typeCode: 'PEE',
+    typeName: '규칙중시형',
   },
   {
     id: '3',
@@ -41,7 +45,7 @@ export const CANDIDATES = [
     score: 77,
     region: '광주',
     moveIn: '2025년 8월',
-    emoji: '🧑‍🦰',
+    imagePath: '/images/characters/momo.png',
     bg: 'bg-pinkSoft',
     goodPoints: [
       { text: '청소 주기가 비슷해요', tag: '청결' },
@@ -52,6 +56,8 @@ export const CANDIDATES = [
       { text: '실내 온도 선호가 달라요', tag: '공간' },
     ],
     hardcuts: ['잦은 손님 방문'],
+    typeCode: 'MOMO',
+    typeName: '자유독립형',
   },
 ];
 

@@ -3,6 +3,13 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from ai_backend.app import app
+from ai_backend.fallback import (
+    build_chat_question_fallback,
+    build_negotiate_fallback,
+    build_pact_fallback,
+)
+from ai_backend.llm_client import GeminiLLMClient
+from ai_backend.negotiate import generate_chat_question_suggestions
 from ai_backend.scoring import calculate_pair_scores
 
 client = TestClient(app)
@@ -491,3 +498,71 @@ def test_match_request_supports_interview_driven_matching_payload() -> None:
     assert body["status"] == "ok"
     assert body["matches"][0]["score"] >= 85
     assert body["matches"][0]["reasons"]
+
+
+def test_gemini_prompts_request_natural_agreement_tone() -> None:
+    negotiate_prompt = GeminiLLMClient._build_prompt(
+        "negotiate",
+        {
+            "pair_label": "민수 & 서연",
+            "conflict_summary": ["취침 시간 차이", "청소 빈도 차이"],
+        },
+    )
+    pact_prompt = GeminiLLMClient._build_prompt(
+        "pact",
+        {
+            "pair_label": "민수 & 서연",
+            "shared_rules": ["밤에는 이어폰을 사용한다."],
+            "rag_guidance": [],
+        },
+    )
+
+    assert "합의형 말투" in negotiate_prompt
+    assert "자연스럽게 말합니다" in negotiate_prompt
+    assert "하나의 합의안" in negotiate_prompt
+    assert "합의형 말투" in pact_prompt
+    assert "자연스러운 표현" in pact_prompt
+
+
+def test_fallback_generation_uses_softer_conversation_tone() -> None:
+    negotiate = build_negotiate_fallback(
+        pair_label="민수 & 서연",
+        conflict_summary=["취침 시간 차이"],
+    )
+    pact = build_pact_fallback(pair_label="민수 & 서연", shared_rules=[])
+
+    assert any("맞춰본다" in item for item in negotiate["suggestions"])
+    assert any("이야기" in item for item in negotiate["suggestions"])
+    assert any("맞춰간다" in item for item in pact["rules"])
+
+
+def test_chat_question_prompt_and_fallback_are_available() -> None:
+    question_prompt = GeminiLLMClient._build_prompt(
+        "chat_questions",
+        {
+            "pair_label": "민수 & 서연",
+            "conflict_summary": ["조용한 시간 기준", "방문객 허용 빈도"],
+            "recent_messages": ["안녕하세요!", "저는 밤에는 조용한 편이 좋아요."],
+        },
+    )
+    fallback = build_chat_question_fallback(
+        pair_label="민수 & 서연",
+        conflict_summary=["조용한 시간 기준"],
+        recent_messages=["저는 밤에는 조용한 편이 좋아요."],
+    )
+
+    assert "물어보면 좋은 질문 3개" in question_prompt
+    assert "자연스럽게 작성합니다" in question_prompt
+    assert len(fallback["questions"]) == 3
+    assert any("물어보" in item for item in fallback["questions"])
+
+
+def test_chat_question_suggestions_return_fallback_when_gemini_is_unavailable() -> None:
+    result = generate_chat_question_suggestions(
+        pair_label="민수 & 서연",
+        conflict_summary=["청소 빈도", "조용한 시간 기준"],
+        recent_messages=["안녕하세요!", "청소는 자주 하는 편이에요."],
+    )
+
+    assert result["source"] == "fallback"
+    assert len(result["questions"]) == 3

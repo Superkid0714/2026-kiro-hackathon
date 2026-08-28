@@ -89,17 +89,60 @@ class GeminiLLMClient:
             )
         if kind == "negotiate":
             return (
-                "두 학생이 따를 단일 협상안 조항 3개를 한국어 문장으로 작성하세요.\n"
+                "두 학생이 바로 대화에 꺼내 쓸 수 있는 단일 협상안 조항 3개를 "
+                "한국어로 작성하세요.\n"
                 f"학생쌍: {payload['pair_label']}\n"
                 f"갈등요약: {', '.join(payload['conflict_summary'])}\n"
-                "설명 없이 조항 문장만 작성하세요."
+                "출력 규칙:\n"
+                "1. 각 줄은 하나의 조항 문장만 작성합니다.\n"
+                "2. 명령조보다 함께 맞춰보자는 합의형 말투를 사용합니다.\n"
+                "3. 상대에게 확인하거나 제안하듯 자연스럽게 말합니다.\n"
+                "4. 여러 대안을 나열하지 말고 하나의 합의안만 씁니다.\n"
+                "5. 설명 없이 조항 문장만 작성합니다."
             )
         if kind == "pact":
+            rag_lines = []
+            for item in payload.get("rag_guidance", []):
+                rag_lines.append(
+                    f"- 주제: {item['title']} / "
+                    f"상황: {item['scenario']} / "
+                    f"가이드: {', '.join(item['guidance'])}"
+                )
             return (
-                "두 학생의 공동 생활 규칙 2~3개를 한국어 문장으로 작성하세요.\n"
+                "두 학생의 공동 생활 규칙 3~5개를 한국어 문장으로 작성하세요.\n"
                 f"학생쌍: {payload['pair_label']}\n"
                 f"공통규칙: {', '.join(payload['shared_rules'])}\n"
-                "설명 없이 규칙 문장만 작성하세요."
+                f"참고 가이드:\n{chr(10).join(rag_lines) if rag_lines else '- 없음'}\n"
+                "출력 규칙:\n"
+                "1. 각 줄은 하나의 생활 약속 문장만 작성합니다.\n"
+                "2. 갈등 가능성이 높은 상황을 먼저 다룹니다.\n"
+                "3. 명령하듯 단정하지 말고 함께 조율하는 합의형 말투로 작성합니다.\n"
+                "4. 상대에게 먼저 물어보고 맞춰볼 수 있는 자연스러운 표현을 사용합니다.\n"
+                "5. 설명 없이 약속 문장만 작성합니다."
+            )
+        if kind == "chat_questions":
+            recent_messages = payload.get("recent_messages", [])
+            recent_lines = "\n".join(f"- {item}" for item in recent_messages[-3:]) or "- 없음"
+            current_speaker_name = payload.get("current_speaker_name") or "질문 작성자"
+            other_speaker_name = payload.get("other_speaker_name") or "상대방"
+            return (
+                "두 학생이 룸메이트 대화 초반에 서로 더 잘 이해하기 위해 "
+                "물어보면 좋은 질문 3개를 한국어로 작성하세요.\n"
+                f"학생쌍: {payload['pair_label']}\n"
+                f"질문 작성자: {current_speaker_name}\n"
+                f"질문을 받을 사람: {other_speaker_name}\n"
+                f"갈등 또는 조율 포인트: {', '.join(payload['conflict_summary'])}\n"
+                f"최근 대화:\n{recent_lines}\n"
+                "출력 규칙:\n"
+                "1. 각 줄은 하나의 질문 문장만 작성합니다.\n"
+                "2. 공격적이거나 따지는 말투를 쓰지 않습니다.\n"
+                "3. 서로 기준을 확인하고 대화를 이어가기 쉬운 표현을 사용합니다.\n"
+                "4. 최근 대화가 있으면 그 흐름을 이어서 자연스럽게 질문합니다.\n"
+                "5. 최근 대화가 거의 없으면 처음 많이 묻는 생활 패턴 질문부터 제안합니다.\n"
+                "6. 질문 작성자가 바로 채팅창에 복사해서 보낼 수 있는 "
+                "자연스럽게 작성합니다.\n"
+                "7. 이미 나온 답을 다시 묻지 말고, 다음으로 이어질 만한 질문을 제안합니다.\n"
+                "8. 설명 없이 질문 문장만 작성합니다."
             )
         raise LLMClientError("unsupported_llm_kind", f"Unsupported kind: {kind}")
 

@@ -228,6 +228,44 @@
 
 ## P1
 
+- [ ] TASK-P1-17 채팅 읽지 않은 메시지 수와 읽음 상태 저장을 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.9.1, FR-01.9.2, FR-08.10, FR-08.11, FR-08.11.1, FR-08.11.2, FR-10.8.1, FR-11.8, NFR-11
+  - File Scope: `.kiro/specs/roompact-campus/*`, `backend/src/main_backend/routes/chat.py`, `backend/src/main_backend/services/chat_service.py`, `backend/src/main_backend/services/storage.py`, `backend/tests/main_backend/*`, `deploy/postgres/schema.sql`, `docs/api/*`, `frontend/roomonic-nextjs/app/chat/page.js`, `frontend/roomonic-nextjs/lib/mockApi.js`, `frontend/roomonic-nextjs/components/BottomNav.jsx`
+  - Depends on: TASK-P1-09, TASK-P1-10
+  - Acceptance:
+    - 메인 백엔드는 참여자별 마지막 읽음 상태를 DB에 저장하고 채팅방 목록 응답에 `unread_count`를 포함해야 한다.
+    - 사용자가 채팅방에 들어와 있는 동안 상대 메시지가 오면 unread count가 증가하지 않아야 한다.
+    - 사용자가 채팅방 밖에 있는 동안 상대 메시지가 오면 채팅 목록과 하단 배지 숫자가 실시간으로 증가해야 한다.
+    - 새로고침 후에도 unread count가 유지되어야 한다.
+    - 기존 채팅 WebSocket 송수신은 그대로 유지되어야 한다.
+  - Verify:
+    - 읽음 상태 저장/조회 테스트
+    - 채팅 목록 unread count 계산 테스트
+    - 채팅방 입장 시 읽음 처리 테스트
+    - WebSocket inbox 이벤트 테스트
+    - `pytest backend/tests/main_backend/test_chat.py` 통과
+    - `npm run build` 통과
+
+- [x] TASK-P1-18 지도 탭 오피스텔 전월세 실거래가 연동을 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.14, FR-01.15, FR-08.16, FR-08.17
+  - File Scope: `.kiro/specs/roompact-campus/*`, `backend/src/main_backend/routes/map.py`, `backend/src/main_backend/services/map_service.py`, `backend/tests/main_backend/test_map.py`, `backend/pyproject.toml`, `backend/.env`, `frontend/roomonic-nextjs/app/map/page.js`
+  - Depends on: TASK-P1-04
+  - Acceptance:
+    - 메인 백엔드는 지역 코드 기준 오피스텔 전월세 실거래가 조회 API를 제공해야 한다.
+    - 응답은 평균 월세/보증금/전용면적 요약과 거래 목록을 정규화된 JSON으로 반환해야 한다.
+    - 프론트 지도 탭은 광주 고정 샘플 대신 선택한 지역 기준 실데이터를 조회해 표시해야 한다.
+    - 프론트 지도 탭은 검색어로 지도 중심을 이동하고, 월세/보증금 필터로 거래 목록을 좁힐 수 있어야 한다.
+    - 좌표 보강이 가능한 거래는 지도 마커로 표시되어야 한다.
+    - 공공데이터 API 키는 프론트가 직접 사용하지 않아야 한다.
+  - Verify:
+    - `pytest backend/tests/main_backend/test_map.py` 통과
+    - `npm run build` 통과
+    - `backend/scripts/verify.ps1` 통과
+
 - [x] TASK-P1-14 매칭 요청 목록 조회 API와 프론트 후보→채팅 실 API 연결
   - Status: DONE
   - Owner: Claude Code
@@ -246,6 +284,38 @@
     - 수락된 요청의 `room_id` 포함 테스트
     - `npm run build` 통과
     - 로컬 백엔드 기준 후보→요청→수락→채팅방→확정→Pact 전 과정 수동 검증
+
+- [x] TASK-P1-15 채팅용 추가 질문 추천 API와 UI를 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-06.4, FR-06.5, FR-06.6, FR-08.15
+  - File Scope: `.kiro/specs/roompact-campus/*`, `backend/src/ai_backend/negotiate.py`, `backend/src/ai_backend/llm_client.py`, `backend/src/ai_backend/fallback.py`, `backend/src/main_backend/routes/chat.py`, `backend/src/main_backend/services/chat_service.py`, `backend/tests/*`, `docs/api/*`, `frontend/roomonic-nextjs/app/chat/page.js`, `frontend/roomonic-nextjs/lib/mockApi.js`
+  - Depends on: TASK-P1-09, TASK-P1-10
+  - Acceptance:
+    - 메인 백엔드는 `GET /chat-rooms/{room_id}/question-suggestions`로 현재 대화방 기준 질문 추천 3개를 반환해야 한다.
+    - 질문 추천은 두 프로필의 인터뷰 응답, 캐릭터 결과, 최근 채팅 맥락을 바탕으로 생성되어야 한다.
+    - Gemini API 호출 실패 시 fallback 질문 배열과 `source: fallback`을 반환해야 한다.
+    - 프론트 채팅 화면은 추천 질문을 자연스럽게 노출하고 입력에 활용할 수 있어야 한다.
+
+- [x] TASK-P1-16 약속 결과 화면을 실제 Pact 데이터 기반으로 정리한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.12, FR-08.13, FR-10.12
+  - File Scope: `frontend/roomonic-nextjs/app/final/page.js`, `frontend/roomonic-nextjs/lib/mockApi.js`
+  - Depends on: TASK-P1-13
+  - Acceptance:
+    - 서명 이후 결과 화면은 정적인 예시 문구가 아니라 실제 Pact 데이터와 서명 상태를 보여줘야 한다.
+    - 결과 화면은 AI 약속과 추가 약속을 함께 보여주고 참가자별 서명 상태를 확인할 수 있어야 한다.
+    - 결과 화면에서 홈 이동과 약속 복사가 가능해야 한다.
+  - Verify:
+    - `npm run build` 통과
+    - 실제 Pact 데이터 기준 화면 수동 확인
+  - Verify:
+    - 질문 추천 API 테스트
+    - LLM fallback 테스트
+    - `pytest backend/tests/main_backend/test_chat.py` 통과
+    - `pytest backend/tests/ai_backend/test_ai_backend.py` 통과
+    - `npm run build` 통과
 
 - [x] TASK-P1-13 룸메이트 확정 후 Pact 생성을 추가한다
   - Status: DONE
@@ -476,6 +546,7 @@
 - Self Review: TASK-P1-13 완료. 룸메이트 확정 API, 충돌 가능 항목 기반 약속 생성 로직, PostgreSQL 저장 구조를 추가했다.
 - Self Review: TASK-P1-13 남은 작업 처리. `rules/review` 화면이 목업 대신 실제 Pact(`rules`/`conflict_topics`)를 사용하도록 `mockApi.js`를 정리하고, `docs/api/main-backend-openapi.json`을 실제 FastAPI 스키마로 재생성했다.
 - Self Review: TASK-P1-14 완료. 후보 선택→채팅→룸메이트 확정 흐름이 로컬 `localStorage` 시뮬레이션(가짜 2.5초 자동수락, 하드코딩된 Pact)으로 동작하던 걸 발견하고, `GET /profiles/{profile_id}/match-requests` 목록 API를 추가해 프론트 후보 선택/채팅 목록/수락 흐름을 실제 매칭 요청·채팅방·룸메이트 확정 API로 연결했다. 연습 모드(`practice`)는 기존 로컬 시뮬레이션을 그대로 유지한다.
+- Self Review: TASK-P1-16 완료. `final` 화면이 정적인 예시 카드로 남아 있어 실제 약속/서명 결과가 반영되지 않던 문제를 수정했고, 실제 Pact 데이터 기반의 약속판 UI와 복사/홈 이동 동작을 추가했다.
 
 - Self Review: TASK-P0-01 완료. 일반 백엔드 FastAPI 골격, 기본 세션 API, 헬스체크, 로컬 테스트 통과.
 - Self Review: TASK-P0-02~10 완료. AI 백엔드 FastAPI 진입점, 결정론적 scoring/matching, Gemini API 경계, fallback, 공용 저장소, 메인-투-AI 연결, 통합 테스트를 모두 구현했다.

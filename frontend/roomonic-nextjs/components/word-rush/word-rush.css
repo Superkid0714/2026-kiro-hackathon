@@ -1,0 +1,81 @@
+/* Word Rush 전용 애니메이션. globals.css 를 건드리지 않기 위해 별도 파일로 두고
+   WordRushGame.jsx 에서만 import 한다. */
+
+@keyframes wr-pop {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes wr-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@keyframes wr-rise {
+  0% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes wr-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(91, 79, 207, 0);
+  }
+  50% {
+    box-shadow: 0 0 22px 4px rgba(91, 79, 207, 0.32);
+  }
+}
+
+.wr-pop {
+  animation: wr-pop 0.45s ease-out both;
+}
+.wr-shake {
+  animation: wr-shake 0.4s ease-in-out both;
+}
+.wr-rise {
+  animation: wr-rise 0.5s ease-out both;
+}
+.wr-winner {
+  animation:
+    wr-pop 0.5s ease-out both,
+    wr-glow 2s ease-in-out 0.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wr-pop,
+  .wr-shake,
+  .wr-rise,
+  .wr-winner {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+  }
+}

@@ -1,15 +1,67 @@
 'use client';
-import Link from 'next/link';
+import { useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import Shell from '@/components/Shell';
-import { StatusBar, Button } from '@/components/UI';
-import { getKakaoLoginUrl } from '@/lib/mockApi';
+import { Button } from '@/components/UI';
+import { getCurrentAuthContext, getCurrentProfileContext, getKakaoLoginUrl } from '@/lib/mockApi';
 
 export default function LandingPage() {
+  const router = useRouter();
   const kakaoLoginUrl = getKakaoLoginUrl();
+  const audioRef = useRef(null);
+
+  useEffect(() => {
+    const auth = getCurrentAuthContext();
+    const profile = getCurrentProfileContext();
+
+    if (auth?.user?.profile_id || (auth?.access_token && profile?.profile_id)) {
+      router.replace('/home');
+    }
+  }, [router]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return undefined;
+
+    const tryPlay = () => {
+      audio.play().catch(() => {});
+    };
+
+    audio.load();
+    tryPlay();
+    window.addEventListener('pointerdown', tryPlay, { once: true });
+    window.addEventListener('touchstart', tryPlay, { once: true });
+    window.addEventListener('touchend', tryPlay, { once: true });
+    window.addEventListener('click', tryPlay, { once: true });
+    window.addEventListener('keydown', tryPlay, { once: true });
+
+    return () => {
+      window.removeEventListener('pointerdown', tryPlay);
+      window.removeEventListener('touchstart', tryPlay);
+      window.removeEventListener('touchend', tryPlay);
+      window.removeEventListener('click', tryPlay);
+      window.removeEventListener('keydown', tryPlay);
+    };
+  }, []);
 
   return (
     <Shell dark>
-      <StatusBar dark />
+      <audio
+        ref={audioRef}
+        src="/images/audio/login-bgm.m4a"
+        autoPlay
+        loop
+        preload="auto"
+        playsInline
+      />
+      <div className="absolute inset-0">
+        <img
+          src="/images/login/home-bg.gif"
+          alt=""
+          className="h-full w-full object-cover"
+        />
+        <div className="absolute inset-0 bg-[#23185A]/52" />
+      </div>
       <div className="relative z-10 flex-1 flex flex-col justify-center px-6">
         <svg width="30" height="30" viewBox="0 0 40 40" className="mb-2">
           <path
@@ -35,19 +87,14 @@ export default function LandingPage() {
           <br />
           함께할 룸메이트를 찾아드려요
         </p>
-        <div className="flex justify-center my-4">
-          <svg width="120" height="100" viewBox="0 0 120 100">
-            <ellipse cx="60" cy="78" rx="46" ry="8" fill="#000" opacity="0.15" />
-            <circle cx="34" cy="30" r="12" fill="#EDE9FC" />
-            <circle cx="86" cy="30" r="12" fill="#EDE9FC" />
-            <circle cx="60" cy="46" r="34" fill="#F4F2FD" />
-            <circle cx="49" cy="46" r="2.6" fill="#2A2450" />
-            <circle cx="71" cy="46" r="2.6" fill="#2A2450" />
-            <circle cx="43" cy="54" r="4" fill="#F3A9D2" opacity=".6" />
-            <circle cx="77" cy="54" r="4" fill="#F3A9D2" opacity=".6" />
-            <path d="M52 58 Q60 63 68 58" stroke="#2A2450" strokeWidth="2" fill="none" strokeLinecap="round" />
-            <path d="M60 6 l4 9 9 1 -7 6 2 9 -8-5 -8 5 2-9 -7-6 9-1z" fill="#FBE05A" />
-          </svg>
+        <div className="flex justify-center my-5">
+          <div className="w-[236px] h-[236px] flex items-center justify-center overflow-hidden">
+            <img
+              src="/images/characters/UNI.png"
+              alt="UNI character"
+              className="w-[228px] h-[228px] object-contain"
+            />
+          </div>
         </div>
       </div>
       <div className="relative z-10 px-6 pb-6">
@@ -56,7 +103,6 @@ export default function LandingPage() {
             <Button
               className="bg-[#FEE500] text-[#191600] shadow-none hover:bg-[#F7DC00]"
             >
-              <span className="text-[16px] leading-none">💬</span>
               카카오로 시작하기
             </Button>
           </a>
@@ -65,9 +111,6 @@ export default function LandingPage() {
             카카오 로그인 설정 필요
           </Button>
         )}
-        <p className="text-center text-[11.5px] text-[#B9B2E6] mt-2.5">
-          회원가입과 로그인은 카카오 계정으로 통합됩니다
-        </p>
       </div>
     </Shell>
   );

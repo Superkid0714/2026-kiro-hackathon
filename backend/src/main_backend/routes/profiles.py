@@ -132,6 +132,14 @@ def get_profile(profile_id: str) -> dict[str, object]:
     return {"status": "ok", "profile": profile}
 
 
+@router.put("/{profile_id}")
+def update_profile(profile_id: str, payload: ProfileCreateRequest) -> dict[str, object]:
+    profile = profile_service.update_profile(profile_id, payload.model_dump())
+    if profile is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="profile_not_found")
+    return {"status": "updated", "profile": profile}
+
+
 @router.put("/{profile_id}/interview")
 def save_profile_interview(profile_id: str, payload: ProfileInterviewRequest) -> dict[str, object]:
     interview = profile_service.save_interview(profile_id, payload.model_dump())
@@ -146,11 +154,15 @@ def get_profile_interview(profile_id: str) -> dict[str, object]:
     if interview is None:
         if profile_service.get_profile(profile_id) is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="profile_not_found")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="profile_interview_not_found",
-        )
-    return {"status": "ok", **interview}
+        return {
+            "status": "ok",
+            "profile_id": profile_id,
+            "has_interview": False,
+            "interview": None,
+            "character": None,
+            "updated_at": None,
+        }
+    return {"status": "ok", "has_interview": True, **interview}
 
 
 @router.get("/{profile_id}/recommendations")

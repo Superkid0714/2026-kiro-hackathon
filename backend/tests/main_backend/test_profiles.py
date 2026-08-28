@@ -90,6 +90,41 @@ def test_get_unknown_profile_returns_not_found() -> None:
     assert response.json() == {"detail": "profile_not_found"}
 
 
+def test_update_profile_returns_updated_shape() -> None:
+    create_response = client.post(
+        "/profiles",
+        json={
+            "nickname": "민수",
+            "age": 22,
+            "gender": "male",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+        },
+    )
+    profile_id = create_response.json()["profile"]["profile_id"]
+
+    response = client.put(
+        f"/profiles/{profile_id}",
+        json={
+            "nickname": "민수수정",
+            "age": 23,
+            "gender": "male",
+            "region": "서울특별시",
+            "move_in_period": "2026-10",
+            "stay_duration_months": 12,
+        },
+    )
+
+    body = response.json()
+    assert response.status_code == 200
+    assert body["status"] == "updated"
+    assert body["profile"]["profile_id"] == profile_id
+    assert body["profile"]["nickname"] == "민수수정"
+    assert body["profile"]["region"] == "서울특별시"
+    assert body["profile"]["stay_duration_months"] == 12
+
+
 def test_save_profile_interview_returns_expected_shape() -> None:
     create_response = client.post(
         "/profiles",
@@ -182,6 +217,7 @@ def test_get_profile_interview_returns_saved_interview() -> None:
 
     assert response.status_code == 200
     assert body["status"] == "ok"
+    assert body["has_interview"] is True
     assert body["profile_id"] == profile_id
     assert body["interview"]["smoking_type"] == "전자담배"
     assert body["interview"]["smoking_place"] == "밖"
@@ -240,6 +276,34 @@ def test_save_profile_interview_unknown_profile_returns_not_found() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "profile_not_found"}
+
+
+def test_get_profile_interview_returns_empty_state_when_not_started() -> None:
+    create_response = client.post(
+        "/profiles",
+        json={
+            "nickname": "가영",
+            "age": 22,
+            "gender": "female",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+        },
+    )
+    profile_id = create_response.json()["profile"]["profile_id"]
+
+    response = client.get(f"/profiles/{profile_id}/interview")
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body == {
+        "status": "ok",
+        "profile_id": profile_id,
+        "has_interview": False,
+        "interview": None,
+        "character": None,
+        "updated_at": None,
+    }
 
 
 def test_recommendations_are_generated_and_refresh_existing_profiles() -> None:

@@ -38,6 +38,7 @@
 - 학생 생활 인터뷰 저장 및 조회
 - 학생 생활 인터뷰 기반 캐릭터 유형 산출
 - 학생 추천 후보 자동 계산 및 조회
+- 지도 탭용 국토부 오피스텔 전월세 실거래가 조회 프록시
 - 추천 후보 간 상호 수락 요청 관리
 - 상호 수락 완료 후 1:1 채팅방 생성 및 메시지 저장
 - 카카오 로그인 코드 교환과 서비스 사용자 식별
@@ -117,9 +118,11 @@ fallback.py
 
 - 협상안 문장화 여부 판단
 - 입력 갈등 요약을 문장화
+- 채팅 단계에서 추가로 확인하면 좋은 질문 후보 생성
 - 실패 시 `fallback.py`로 대체
 - 반환 형식은 협상 제안 문자열 배열 `suggestions`와 `source` 필드 (`llm` 또는 `fallback`)를 포함해야 한다
 - `suggestions`는 항상 하나의 최종 협상안을 구성하는 조항들의 배열이며, 여러 대안 중 하나를 선택하게 하는 용도가 아니다
+- 질문 추천 반환 형식은 질문 문자열 배열 `questions`와 `source` 필드 (`llm` 또는 `fallback`)를 포함해야 한다
 
 ### `pact.py`
 
@@ -176,6 +179,16 @@ fallback.py
 - 일반 백엔드는 기본적으로 `8000` 포트, AI 백엔드는 `8001` 포트를 사용하도록 가정한다.
 - `nginx`는 `80 -> /api -> main backend:8000`으로 프록시하고, AI 백엔드 `8001`은 내부 호출만 허용한다.
 - PostgreSQL은 `127.0.0.1:5432`에서만 수신하고 외부 공개하지 않는다.
+
+### 지도 실거래가 조회
+
+- 지도 화면의 실거래가 데이터는 메인 백엔드가 국토교통부 오피스텔 전월세 실거래가 OpenAPI를 호출해 가져온다.
+- 프론트엔드는 공공데이터 API 키를 직접 사용하지 않고, 항상 메인 백엔드의 `/api/map/officetel-rents`만 호출한다.
+- 메인 백엔드는 `lawd_code`, `deal_ymd`, `num_of_rows`, `include_coordinates` 입력을 받아 XML 응답을 정규화한 JSON으로 반환한다.
+- `include_coordinates=true`인 경우 메인 백엔드는 네이버 Geocoding API를 서버에서 호출해 거래 주소의 좌표를 보강한다.
+- 프론트엔드는 네이버 Dynamic Map Client ID만 사용하고, 네이버 Geocoding Client Secret과 공공데이터 인증키는 백엔드 환경변수로만 관리한다.
+- 장소 검색은 프론트가 `/api/map/geocode`를 호출해 지도 중심을 이동하는 방식으로 처리한다.
+- 네이버 지도는 선택 지역 중심점, 검색 위치, 실거래가 마커를 시각화하고, 상세 거래 비교는 목록 카드에서 제공한다.
 
 ### 심사 대응 포인트
 
@@ -499,6 +512,12 @@ fallback은 다음 속성을 만족해야 한다.
   - `sender_profile_id`
   - `payload`
   - `created_at`
+- `chat_room_reads`
+  - `room_id`
+  - `profile_id`
+  - `last_read_message_id`
+  - `last_read_at`
+  - `updated_at`
 - `match_results`
   - `session_id`
   - `status`
@@ -546,7 +565,10 @@ fallback은 다음 속성을 만족해야 한다.
 - 일반 백엔드는 `POST /match-requests/{request_id}/accept`로 상대 프로필의 수락을 기록한다.
 - 일반 백엔드는 `POST /profiles/{profile_id}/chat-rooms`로 상호 수락이 끝난 상대 프로필과의 채팅방을 생성하거나 기존 방을 반환한다.
 - 일반 백엔드는 `GET /chat-rooms/{room_id}/messages`로 저장된 메시지 이력을 반환한다.
+- 일반 백엔드는 `POST /chat-rooms/{room_id}/read`로 현재 참여자의 마지막 읽음 시점을 갱신한다.
+- 일반 백엔드는 `GET /chat-rooms/{room_id}/question-suggestions`로 지금 대화에서 추가로 확인하면 좋은 질문 3개를 반환한다.
 - 일반 백엔드는 `ws /ws/chat-rooms/{room_id}`로 실시간 메시지 송수신을 처리한다.
+- 일반 백엔드는 `ws /ws/profiles/{profile_id}/inbox`로 채팅 목록의 unread count와 요청 상태를 실시간으로 갱신한다.
 - 일반 백엔드는 `POST /chat-rooms/{room_id}/roommate-confirmation`으로 최종 룸메이트 확정을 기록하고 Pact 생성 로직을 실행할 수 있다.
 - 프론트는 채팅에 대해 AI 백엔드를 호출하지 않는다.
 
@@ -556,23 +578,27 @@ fallback은 다음 속성을 만족해야 한다.
 - 채팅 메시지는 `text` 단문 메시지와 `sent_at` 시각을 포함한다.
 - 서버는 메시지를 저장한 뒤 같은 방의 연결된 참가자들에게 동일 payload를 브로드캐스트한다.
 - 메시지 이력 조회와 실시간 수신의 메시지 형식은 동일하게 유지한다.
+- 서버는 참여자별 `last_read_message_id` 또는 `last_read_at`을 저장하고, 채팅방을 보고 있지 않은 사용자의 unread count를 채팅 목록에서 계산할 수 있어야 한다.
+- 사용자가 현재 채팅방을 보고 있는 상태에서 상대 메시지가 도착하면 서버는 그 참여자의 읽음 상태를 즉시 최신으로 갱신해 unread count를 올리지 않는다.
 
 ### 매칭 요청 목록 조회 및 프론트 연결
 
 - 일반 백엔드는 `GET /profiles/{profile_id}/match-requests`로 해당 프로필이 `participant_a` 또는 `participant_b`인 매칭 요청 전체를 반환한다.
 - 목록 각 항목에는 상대 프로필 요약(`peer_profile_id`, `peer_nickname`, `peer_region`)과 상태(`pending`/`accepted`)가 포함된다.
+- 목록 각 항목에는 사용자 기준 읽지 않은 메시지 수 `unread_count`가 포함된다.
 - 상태가 `accepted`인 항목에는 연결된 채팅방 `room_id`를 함께 포함한다(방이 아직 없으면 `null`).
 - 프론트는 이 목록 API를 채팅 목록(수신함) 화면의 데이터 소스로 사용한다.
 - 프론트는 후보 선택 시 `POST /profiles/{profile_id}/match-requests`를 직접 호출해 요청을 생성해야 하며, 로컬 저장소에 가짜 대화를 만들거나 스스로 자동 수락 처리하지 않는다.
 - 요청을 받은 쪽(target) 사용자는 채팅 목록에서 수락 버튼을 통해 `POST /match-requests/{request_id}/accept`를 호출할 수 있어야 한다.
 - 수락 직후 프론트는 `POST /profiles/{profile_id}/chat-rooms`를 호출해 실제 채팅방을 확보한 뒤에만 채팅 화면으로 이동한다.
+- 채팅 화면은 `GET /chat-rooms/{room_id}/question-suggestions` 응답을 사용해, 지금 이 대화에서 먼저 확인해두면 좋은 질문 칩 또는 제안 문구를 보여줄 수 있다.
 - 데모/연습 모드(로그인 없이 흐름을 미리 보여주는 용도)는 기존 로컬 시뮬레이션을 유지할 수 있으나, 실제 프로필이 있는 사용자 흐름과는 명확히 분리한다.
 
 ### 운영 제약
 
 - 공개 진입점은 `nginx`의 `/api/ws/...` 경로를 사용한다.
 - `nginx`는 WebSocket upgrade 헤더를 메인 백엔드로 전달해야 한다.
-- 해커톤 범위에서는 읽음 여부, 첨부파일, 다자간 채팅은 지원하지 않는다.
+- 해커톤 범위에서는 첨부파일, 다자간 채팅은 지원하지 않는다.
 
 ## AI 백엔드 응답 구조
 

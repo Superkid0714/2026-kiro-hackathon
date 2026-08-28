@@ -6,6 +6,9 @@ from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
 from ai_backend.handler import InputValidationError, process_match_request
+from runtime_env import load_runtime_env
+
+load_runtime_env()
 
 
 class StudentProfile(BaseModel):

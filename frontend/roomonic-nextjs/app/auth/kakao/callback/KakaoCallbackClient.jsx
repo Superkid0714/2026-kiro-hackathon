@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Shell from '@/components/Shell';
 import { Button, StatusBar } from '@/components/UI';
@@ -11,6 +11,7 @@ export default function KakaoCallbackClient() {
   const searchParams = useSearchParams();
   const [state, setState] = useState('loading');
   const [message, setMessage] = useState('카카오 로그인 정보를 확인하고 있어요');
+  const hasExchangedRef = useRef(false);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -31,14 +32,15 @@ export default function KakaoCallbackClient() {
     let cancelled = false;
 
     async function run() {
+      if (hasExchangedRef.current) {
+        return;
+      }
+      hasExchangedRef.current = true;
       try {
         const result = await exchangeKakaoCode(code);
         if (cancelled) return;
         setState('success');
-        setMessage('로그인이 완료되어 이동하고 있어요');
-        window.setTimeout(() => {
-          router.replace(result.user?.profile_id ? '/candidates' : '/profile');
-        }, 600);
+        router.replace(result.user?.profile_id ? '/home' : '/profile');
       } catch (error) {
         if (cancelled) return;
         setState('error');
@@ -52,6 +54,10 @@ export default function KakaoCallbackClient() {
     };
   }, [router, searchParams]);
 
+  if (state !== 'error') {
+    return null;
+  }
+
   return (
     <Shell>
       <StatusBar />
@@ -64,7 +70,7 @@ export default function KakaoCallbackClient() {
           <p className="text-[12px] leading-relaxed text-inkFaint">{message}</p>
           {state === 'error' && (
             <div className="mt-5">
-              <Button onClick={() => router.replace('/login')}>로그인 화면으로 돌아가기</Button>
+              <Button onClick={() => router.replace('/login')}>처음 화면으로 돌아가기</Button>
             </div>
           )}
         </div>

@@ -68,13 +68,36 @@ export function Tag({ tone = 'default', children }) {
   );
 }
 
-export function StatusBar({ dark = false }) {
+export function Modal({
+  open,
+  title,
+  description,
+  primaryLabel = '확인',
+  secondaryLabel = '닫기',
+  onPrimary,
+  onSecondary,
+}) {
+  if (!open) return null;
+
   return (
-    <div className={`flex justify-between px-[22px] pt-3.5 pb-1 text-[11px] font-bold ${dark ? 'text-white' : 'text-ink'}`}>
-      <span>9:41</span>
-      <span>📶 🔋</span>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[rgba(17,14,35,0.52)] px-5 pb-6 pt-10 sm:items-center">
+      <div className="w-full max-w-[360px] rounded-[28px] bg-white px-5 py-5 shadow-2xl">
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-[#E9E1FF]" />
+        <h3 className="text-[18px] font-bold text-ink">{title}</h3>
+        <p className="mt-2 text-[13px] leading-relaxed text-inkSoft">{description}</p>
+        <div className="mt-5 grid grid-cols-2 gap-2.5">
+          <Button variant="ghost" onClick={onSecondary}>
+            {secondaryLabel}
+          </Button>
+          <Button onClick={onPrimary}>{primaryLabel}</Button>
+        </div>
+      </div>
     </div>
   );
+}
+
+export function StatusBar({ dark = false }) {
+  return null;
 }
 
 export function BackLink({ onClick, dark = false }) {

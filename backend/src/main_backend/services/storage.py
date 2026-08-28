@@ -72,9 +72,21 @@ class StorageBackend(Protocol):
 
     def list_chat_messages(self, room_id: str) -> list[dict[str, Any]]: ...
 
+    def save_chat_read_state(
+        self, room_id: str, profile_id: str, read_state: dict[str, Any]
+    ) -> None: ...
+
+    def get_chat_read_state(self, room_id: str, profile_id: str) -> dict[str, Any] | None: ...
+
+    def count_unread_messages(
+        self, room_id: str, profile_id: str, last_read_at: str | None
+    ) -> int: ...
+
     def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None: ...
 
     def get_roommate_pact(self, room_id: str) -> dict[str, Any] | None: ...
+
+    def find_confirmed_room_for_profile(self, profile_id: str) -> dict[str, Any] | None: ...
 
 
 @dataclass
@@ -268,6 +280,42 @@ class LocalJsonStorage:
             payload = self._read()
             return deepcopy(payload["chat_messages"].get(room_id, []))
 
+    def save_chat_read_state(
+        self, room_id: str, profile_id: str, read_state: dict[str, Any]
+    ) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["chat_room_reads"][f"{room_id}::{profile_id}"] = deepcopy(read_state)
+            self._write(payload)
+
+    def get_chat_read_state(self, room_id: str, profile_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            state = payload["chat_room_reads"].get(f"{room_id}::{profile_id}")
+            return deepcopy(state) if state is not None else None
+
+    def count_unread_messages(
+        self, room_id: str, profile_id: str, last_read_at: str | None
+    ) -> int:
+        with self._lock:
+            payload = self._read()
+            messages = payload["chat_messages"].get(room_id, [])
+            if not messages:
+                return 0
+            if last_read_at:
+                read_at = datetime.fromisoformat(last_read_at)
+            else:
+                read_at = None
+            return sum(
+                1
+                for message in messages
+                if message.get("sender_profile_id") != profile_id
+                and (
+                    read_at is None
+                    or datetime.fromisoformat(message["sent_at"]) > read_at
+                )
+            )
+
     def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None:
         with self._lock:
             payload = self._read()
@@ -279,6 +327,21 @@ class LocalJsonStorage:
             payload = self._read()
             pact = payload["roommate_pacts"].get(room_id)
             return deepcopy(pact) if pact is not None else None
+
+    def find_confirmed_room_for_profile(self, profile_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            for room in payload["chat_rooms"].values():
+                if (
+                    room.get("roommate_confirmed_at")
+                    and profile_id
+                    in {
+                        room.get("participant_a_profile_id"),
+                        room.get("participant_b_profile_id"),
+                    }
+                ):
+                    return deepcopy(room)
+            return None
 
     def _read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists():
@@ -292,6 +355,7 @@ class LocalJsonStorage:
                 "chat_rooms": {},
                 "match_requests": {},
                 "chat_messages": {},
+                "chat_room_reads": {},
                 "roommate_pacts": {},
             }
 
@@ -308,6 +372,7 @@ class LocalJsonStorage:
             "chat_rooms": content.get("chat_rooms", {}),
             "match_requests": content.get("match_requests", {}),
             "chat_messages": content.get("chat_messages", {}),
+            "chat_room_reads": content.get("chat_room_reads", {}),
             "roommate_pacts": content.get("roommate_pacts", {}),
         }
 
@@ -588,6 +653,43 @@ class DynamoDbStorage:
         items.sort(key=lambda item: item["payload"]["sent_at"])
         return [deepcopy(item["payload"]) for item in items]
 
+    def save_chat_read_state(
+        self, room_id: str, profile_id: str, read_state: dict[str, Any]
+    ) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"CHATROOM#{room_id}",
+                f"READ#{profile_id}",
+                read_state,
+                "read",
+            )
+        )
+
+    def get_chat_read_state(self, room_id: str, profile_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(
+            Key={"pk": f"CHATROOM#{room_id}", "sk": f"READ#{profile_id}"}
+        )
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
+
+    def count_unread_messages(
+        self, room_id: str, profile_id: str, last_read_at: str | None
+    ) -> int:
+        messages = self.list_chat_messages(room_id)
+        if last_read_at:
+            read_at = datetime.fromisoformat(last_read_at)
+        else:
+            read_at = None
+        return sum(
+            1
+            for message in messages
+            if message.get("sender_profile_id") != profile_id
+            and (
+                read_at is None
+                or datetime.fromisoformat(message["sent_at"]) > read_at
+            )
+        )
+
     def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None:
         self._table.put_item(
             Item=self._item(
@@ -602,6 +704,24 @@ class DynamoDbStorage:
         response = self._table.get_item(Key={"pk": f"CHATROOM#{room_id}", "sk": "ROOMMATE_PACT"})
         item = response.get("Item")
         return deepcopy(item["payload"]) if item is not None else None
+
+    def find_confirmed_room_for_profile(self, profile_id: str) -> dict[str, Any] | None:
+        response = self._table.scan(
+            FilterExpression=(
+                "#sk = :room AND "
+                "(participant_a_profile_id = :profile_id OR participant_b_profile_id = :profile_id)"
+            ),
+            ExpressionAttributeNames={"#sk": "sk"},
+            ExpressionAttributeValues={
+                ":room": "ROOM",
+                ":profile_id": profile_id,
+            },
+        )
+        for item in response.get("Items", []):
+            payload = item["payload"]
+            if payload.get("roommate_confirmed_at"):
+                return deepcopy(payload)
+        return None
 
     @staticmethod
     def _item(
@@ -1041,6 +1161,73 @@ class PostgresStorage:
             rows = cursor.fetchall()
             return [deepcopy(row["payload"]) for row in rows]
 
+    def save_chat_read_state(
+        self, room_id: str, profile_id: str, read_state: dict[str, Any]
+    ) -> None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO chat_room_reads (
+                    room_id, profile_id, last_read_message_id, last_read_at, payload, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s::jsonb, %s)
+                ON CONFLICT (room_id, profile_id) DO UPDATE SET
+                    last_read_message_id = EXCLUDED.last_read_message_id,
+                    last_read_at = EXCLUDED.last_read_at,
+                    payload = EXCLUDED.payload,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (
+                    room_id,
+                    profile_id,
+                    read_state.get("last_read_message_id"),
+                    read_state.get("last_read_at"),
+                    json.dumps(read_state, ensure_ascii=False),
+                    read_state["updated_at"],
+                ),
+            )
+
+    def get_chat_read_state(self, room_id: str, profile_id: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                """
+                SELECT payload
+                FROM chat_room_reads
+                WHERE room_id = %s AND profile_id = %s
+                """,
+                (room_id, profile_id),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def count_unread_messages(
+        self, room_id: str, profile_id: str, last_read_at: str | None
+    ) -> int:
+        with self._cursor(row_factory="dict") as cursor:
+            if last_read_at:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS unread_count
+                    FROM chat_messages
+                    WHERE room_id = %s
+                      AND sender_profile_id <> %s
+                      AND created_at > %s
+                    """,
+                    (room_id, profile_id, last_read_at),
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT COUNT(*) AS unread_count
+                    FROM chat_messages
+                    WHERE room_id = %s
+                      AND sender_profile_id <> %s
+                    """,
+                    (room_id, profile_id),
+                )
+            row = cursor.fetchone()
+            return int(row["unread_count"]) if row is not None else 0
+
     def save_roommate_pact(self, room_id: str, pact: dict[str, Any]) -> None:
         with self._cursor() as cursor:
             cursor.execute(
@@ -1070,6 +1257,23 @@ class PostgresStorage:
             cursor.execute(
                 "SELECT payload FROM roommate_pacts WHERE room_id = %s",
                 (room_id,),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def find_confirmed_room_for_profile(self, profile_id: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                """
+                SELECT payload
+                FROM chat_rooms
+                WHERE (participant_a_profile_id = %s OR participant_b_profile_id = %s)
+                  AND payload ? 'roommate_confirmed_at'
+                  AND COALESCE(payload->>'roommate_confirmed_at', '') <> ''
+                ORDER BY updated_at DESC
+                LIMIT 1
+                """,
+                (profile_id, profile_id),
             )
             row = cursor.fetchone()
             return deepcopy(row["payload"]) if row is not None else None

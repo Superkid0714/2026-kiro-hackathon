@@ -4,6 +4,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from main_backend.routes.api import api_router
+from runtime_env import load_runtime_env
+
+load_runtime_env()
 
 
 def create_app() -> FastAPI:

@@ -5,6 +5,7 @@ from typing import Any
 
 from ai_backend.fallback import build_pact_fallback
 from ai_backend.llm_client import LLMClientError, get_llm_client
+from ai_backend.pact_rag import retrieve_pact_guidance
 
 
 def _minutes(time_value: str | None) -> int | None:
@@ -205,6 +206,7 @@ def generate_pact(
     *,
     pair_label: str,
     shared_rules: list[str],
+    rag_guidance: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     if not shared_rules:
         result = build_pact_fallback(pair_label=pair_label, shared_rules=shared_rules)
@@ -214,7 +216,11 @@ def generate_pact(
     try:
         text = get_llm_client().generate(
             "pact",
-            {"pair_label": pair_label, "shared_rules": shared_rules},
+            {
+                "pair_label": pair_label,
+                "shared_rules": shared_rules,
+                "rag_guidance": rag_guidance or [],
+            },
         )
         rules = [line.strip("- ").strip() for line in text.splitlines() if line.strip()]
         if not rules:
@@ -244,9 +250,31 @@ def generate_roommate_pact(
         interview_b=interview_b,
     )
     pair_label = f"{profile_a['nickname']} & {profile_b['nickname']}"
+    rag_guidance = retrieve_pact_guidance(topics)
     draft_rules = [item["draft_rule"] for item in topics[:5]]
-    pact = generate_pact(pair_label=pair_label, shared_rules=draft_rules)
+    pact = generate_pact(pair_label=pair_label, shared_rules=draft_rules, rag_guidance=rag_guidance)
     generated_at = datetime.now(UTC).isoformat()
+    ai_rules = []
+    for index, topic in enumerate(topics[:5]):
+        ai_rules.append(
+            {
+                "rule_id": f"ai-rule-{index + 1}",
+                "source": pact["source"],
+                "title": topic["label"],
+                "scenario": next(
+                    (
+                        guide["scenario"]
+                        for guide in rag_guidance
+                        if topic["code"] in guide["topic_codes"]
+                    ),
+                    topic["reason"],
+                ),
+                "rule": pact["rules"][index] if index < len(pact["rules"]) else topic["draft_rule"],
+                "reason": topic["reason"],
+                "topic_code": topic["code"],
+                "severity": topic["severity"],
+            }
+        )
     return {
         "room_id": room_id,
         "participant_a_profile_id": profile_a["profile_id"],
@@ -263,9 +291,13 @@ def generate_roommate_pact(
                 "character": character_b or {},
             },
         ],
-        "rules": pact["rules"][:5],
+        "rules": [item["rule"] for item in ai_rules],
+        "ai_rules": ai_rules,
+        "custom_rules": [],
+        "signatures": {},
         "source": pact["source"],
         "conflict_topics": topics,
+        "retrieved_context": rag_guidance,
         "generated_at": generated_at,
         "updated_at": generated_at,
     }

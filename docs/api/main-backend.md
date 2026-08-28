@@ -20,6 +20,7 @@
 - 추천 후보 간 대화 요청 생성, 조회 및 수락
 - 상호 수락 완료 후 1:1 채팅방 생성
 - 채팅방 메시지 이력 조회
+- 채팅방 기준 추가 질문 추천 조회
 - WebSocket 실시간 채팅
 - 룸메이트 확정과 약속 조회
 - 카카오 로그인 코드 교환
@@ -42,6 +43,7 @@
 - 요청을 받은 쪽은 `POST /api/match-requests/{request_id}/accept`로 수락하고, 이때 응답이 `accepted`가 된다.
 - 그 다음 `POST /api/profiles/{profile_id}/chat-rooms`로 채팅방을 확보한다.
 - 기존 메시지 이력은 `GET /api/chat-rooms/{room_id}/messages`로 조회한다.
+- 채팅을 더 자연스럽게 이어가기 위한 질문 추천은 `GET /api/chat-rooms/{room_id}/question-suggestions?profile_id={profile_id}`로 조회한다.
 - 실시간 메시지는 `ws://15.134.137.117/api/ws/chat-rooms/{room_id}`로 연결한다.
 - 채팅 중 최종 룸메이트를 확정할 때는 `POST /api/chat-rooms/{room_id}/roommate-confirmation`을 호출한다.
 - 생성된 약속은 `GET /api/chat-rooms/{room_id}/pact?profile_id={profile_id}`로 조회한다.
@@ -524,16 +526,18 @@ PUT http://15.134.137.117/api/profiles/{profile_id}/interview
 | Key | Type | 비고(예시, 값 설명 등) |
 | --- | --- | --- |
 | status | String | `ok` |
+| has_interview | Boolean | 인터뷰 저장 여부 |
 | profile_id | String | 프로필 ID |
-| interview | Object | 저장된 인터뷰 전체 응답 |
-| character | Object | 인터뷰 기반 캐릭터 분류 결과 |
-| updated_at | String | 마지막 저장 시각 |
+| interview | Object | 저장된 인터뷰 전체 응답. 아직 없으면 `null` |
+| character | Object | 인터뷰 기반 캐릭터 분류 결과. 아직 없으면 `null` |
+| updated_at | String | 마지막 저장 시각. 아직 없으면 `null` |
 
 ### 예시
 
 ```json
 {
   "status": "ok",
+  "has_interview": true,
   "profile_id": "profile-a1b2c3d4",
   "interview": {
     "wake_up_time": "07:00",
@@ -584,11 +588,16 @@ PUT http://15.134.137.117/api/profiles/{profile_id}/interview
 GET http://15.134.137.117/api/profiles/{profile_id}/interview
 ```
 
-- 실패 응답
+- 인터뷰를 아직 시작하지 않은 경우 예시
 
 ```json
 {
-  "detail": "profile_interview_not_found"
+  "status": "ok",
+  "has_interview": false,
+  "profile_id": "profile-a1b2c3d4",
+  "interview": null,
+  "character": null,
+  "updated_at": null
 }
 ```
 
@@ -914,6 +923,39 @@ GET http://15.134.137.117/api/profiles/{profile_id}/interview
 ```json
 {
   "detail": "chat_room_not_found"
+}
+```
+
+### `GET /chat-rooms/{room_id}/question-suggestions`
+
+- 용도: 현재 채팅방에서 추가로 물어보면 좋은 질문 추천 조회
+- 공개 호출 예시: `GET /api/chat-rooms/{room_id}/question-suggestions?profile_id={profile_id}`
+- 기능명세:
+  - 두 프로필의 인터뷰 응답, 캐릭터 결과, 최근 채팅 메시지를 바탕으로 대화를 이어가기 좋은 질문 3개를 반환한다.
+  - 질문은 채팅 입력창에 바로 넣어도 어색하지 않은 자연스러운 문장 톤을 사용한다.
+  - Gemini API 호출이 실패하면 fallback 질문을 같은 형식으로 반환한다.
+
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "room_id": "room-9b21f4cd10",
+  "questions": [
+    "조용한 시간은 보통 몇 시부터 생각하고 있는지 한 번 더 물어봐도 될까요?",
+    "손님이 오는 날에는 어느 정도 전부터 알려주면 편할지 같이 맞춰볼까요?",
+    "입주 첫 주에 먼저 정해두고 싶은 생활 규칙이 있는지 이야기해볼까요?"
+  ],
+  "source": "llm",
+  "generated_at": "2026-08-28T11:10:00+00:00"
+}
+```
+
+- 실패 응답:
+
+```json
+{
+  "detail": "chat_question_requires_profile_interview"
 }
 ```
 
