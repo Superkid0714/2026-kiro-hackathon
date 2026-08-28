@@ -338,6 +338,21 @@
     - 추천 조회 API 테스트
     - PostgreSQL 스키마 갱신 확인
 
+- [x] TASK-P1-08 지역 불일치 감점을 강화해 추천 현실성을 높인다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-02.1, FR-02.3, FR-04.2
+  - File Scope: `backend/src/ai_backend/scoring.py`, `backend/tests/*`, `docs/api/*`
+  - Depends on: TASK-P1-06, TASK-P1-07
+  - Acceptance:
+    - 지역이 다른 두 사용자는 기존보다 큰 감점을 받아 추천 우선순위가 낮아져야 한다.
+    - 같은 지역 사용자는 기존처럼 가산점을 유지해야 한다.
+    - 추천 관련 설명 문서에 지역 항목이 현실 조건으로 강하게 반영된다는 점이 드러나야 한다.
+  - Verify:
+    - 지역 일치 가산점 테스트
+    - 지역 불일치 강한 감점 테스트
+    - 추천 API 문서 갱신 확인
+
 ## 작업 순서 가이드
 
 - `TASK-P0-01`과 `TASK-P0-02`로 두 서버를 먼저 띄운다.
@@ -359,3 +374,4 @@
 - Self Review: TASK-P1-05 완료. PostgreSQL 저장소 백엔드, EC2 설치/초기화 스크립트, 운영 `.env` 기준 DB 설정을 추가했다.
 - Self Review: TASK-P1-06 완료. 인터뷰, 캐릭터, 지역, 입주 시기 기반의 정밀 매칭 점수 계산과 세션 확장 payload, 통합 테스트를 추가했다.
 - Self Review: TASK-P1-07 완료. 인터뷰 저장 시 자동 추천 후보를 계산하고, 기존 제출자 추천까지 함께 갱신하는 양방향 추천 API와 저장 구조를 추가했다.
+- Self Review: TASK-P1-08 완료. 지역 불일치 감점을 `-30`으로 강화해 같은 생활 패턴이어도 생활권 차이가 추천 우선순위에 크게 반영되도록 조정했다.

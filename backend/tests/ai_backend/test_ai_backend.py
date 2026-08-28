@@ -125,6 +125,92 @@ def test_pair_scoring_uses_interview_and_character_payload_when_available() -> N
     )
 
 
+def test_pair_scoring_applies_large_penalty_for_region_mismatch() -> None:
+    student_a = {
+        "student_id": "S1",
+        "region": "광주광역시",
+        "move_in_period": "2026-09",
+        "stay_duration_months": 6,
+        "interview": {
+            "wake_up_time": "07:00",
+            "sleep_time": "23:30",
+            "noise_sensitive": True,
+            "quiet_hours_start": "22:00",
+            "cleaning_frequency": "3",
+            "dishes_deadline": "그날 이내에",
+            "guest_frequency": "1",
+            "smokes": False,
+            "drinking_frequency": "2",
+            "home_stay_frequency": "5",
+            "meal_preference": "직접",
+            "home_activity_frequency": "5",
+            "supplies_sharing": "일부 공유",
+            "summer_temperature": 24,
+            "winter_temperature": 21,
+            "pet_ok": True,
+            "pet_preference": "고양이",
+            "conflict_resolution": "즉시 대면",
+            "shared_cost_rule": "반반",
+            "personal_space_access": "노크 혹은 허락",
+            "personal_space_ratio": "반반",
+            "security_preference": "외출시",
+            "absence_notice": "하루 이상",
+        },
+        "character": {
+            "rule_score": 71.0,
+            "sharing_score": 39.8,
+            "type_code": "PEE",
+        },
+    }
+    student_b_same_region = {
+        "student_id": "S2",
+        "region": "광주광역시",
+        "move_in_period": "2026-09",
+        "stay_duration_months": 12,
+        "interview": {
+            "wake_up_time": "08:20",
+            "sleep_time": "00:50",
+            "noise_sensitive": False,
+            "quiet_hours_start": "23:20",
+            "cleaning_frequency": "5",
+            "dishes_deadline": "다음날 아침",
+            "guest_frequency": "4",
+            "smokes": False,
+            "drinking_frequency": "5",
+            "home_stay_frequency": "2",
+            "meal_preference": "배달",
+            "home_activity_frequency": "2",
+            "supplies_sharing": "각자",
+            "summer_temperature": 27,
+            "winter_temperature": 18,
+            "pet_ok": True,
+            "pet_preference": "강아지",
+            "conflict_resolution": "모아서 대면",
+            "shared_cost_rule": "거주 시간 비율",
+            "personal_space_access": "불가능",
+            "personal_space_ratio": "필요한 만큼",
+            "security_preference": "항시 잠금",
+            "absence_notice": "항상",
+        },
+        "character": {
+            "rule_score": 82.0,
+            "sharing_score": 18.0,
+            "type_code": "MOMO",
+        },
+    }
+    student_b_other_region = {
+        **student_b_same_region,
+        "region": "전라남도",
+    }
+
+    same_region_pair = calculate_pair_scores([student_a, student_b_same_region])[0]
+    other_region_pair = calculate_pair_scores([student_a, student_b_other_region])[0]
+
+    assert same_region_pair["eligible"] is True
+    assert other_region_pair["eligible"] is True
+    assert same_region_pair["score"] - other_region_pair["score"] >= 20
+
+
 def test_pair_scoring_blocks_indoor_smoker_with_non_smoker() -> None:
     students = [
         {

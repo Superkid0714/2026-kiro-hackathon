@@ -24,6 +24,20 @@
 
 ## 기록
 
+### 2026-08-28 — TASK-P1-08
+
+- **Agent**: Codex
+- **Task**: TASK-P1-08 지역 불일치 감점 강화
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/ai_backend/scoring.py`
+  - `backend/tests/ai_backend/test_ai_backend.py`
+  - `docs/api/main-backend.md`
+- **테스트 결과**: PASS — `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`
+- **남은 작업**:
+  - 운영 EC2 재배포 시 추천 점수 변화 체감 확인
+- **비고**: 지역이 다를 때 감점을 `-30`으로 높여 실제 생활권 차이가 추천 점수에 강하게 반영되도록 조정함.
+
 ### 2026-08-28 — TASK-P1-07
 
 - **Agent**: Codex

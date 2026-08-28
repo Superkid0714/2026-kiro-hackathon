@@ -661,7 +661,7 @@ def _region_score(
         positive_factors.append((6, "희망 지역이 같습니다"))
         return 6
     mismatch_factors.append("희망 지역이 달라 생활권 조율이 필요합니다")
-    return -2
+    return -30
 
 
 def _move_in_score(
