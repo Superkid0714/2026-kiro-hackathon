@@ -3,8 +3,8 @@ from typing import Literal
 from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field, model_validator
 
-from main_backend.services.profile_service import profile_service
 from main_backend.services.auth_service import auth_service
+from main_backend.services.profile_service import profile_service
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 

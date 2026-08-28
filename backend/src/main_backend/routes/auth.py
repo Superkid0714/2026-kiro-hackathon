@@ -38,6 +38,9 @@ def get_current_user(authorization: str | None = Header(default=None)) -> dict[s
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=exc.code) from exc
         if exc.code == "user_not_found":
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.code) from exc
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=exc.code) from exc
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=exc.code,
+        ) from exc
 
     return {"status": "ok", "user": user}
