@@ -24,6 +24,37 @@
 
 ## 기록
 
+### 2026-08-28 — TASK-P1-11
+
+- **Agent**: Codex
+- **Task**: TASK-P1-11 카카오 소셜 로그인 연동 추가
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/.env.example`
+  - `backend/src/main_backend/routes/api.py`
+  - `backend/src/main_backend/routes/auth.py`
+  - `backend/src/main_backend/routes/profiles.py`
+  - `backend/src/main_backend/services/auth_service.py`
+  - `backend/src/main_backend/services/storage.py`
+  - `backend/tests/main_backend/test_auth.py`
+  - `deploy/postgres/schema.sql`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+  - `frontend/roomonic-nextjs/app/auth/kakao/callback/page.js`
+  - `frontend/roomonic-nextjs/app/login/page.js`
+  - `frontend/roomonic-nextjs/app/page.js`
+  - `frontend/roomonic-nextjs/app/profile/page.js`
+  - `frontend/roomonic-nextjs/app/signup/page.js`
+  - `frontend/roomonic-nextjs/lib/mockApi.js`
+  - `scripts/install-postgres.sh`
+- **테스트 결과**: PASS — `pytest backend/tests/main_backend`, `npm run build`
+- **남은 작업**:
+  - 운영 프론트와 백엔드 env의 `KAKAO_REDIRECT_URI`를 실제 공개 주소 기준으로 유지
+  - 프론트가 서비스 access token을 활용해 보호 API를 붙일지 결정
+- **비고**: 카카오 로그인은 프론트 콜백에서 인가 코드를 받고, 메인 백엔드가 토큰 교환과 사용자 저장을 처리하도록 구성함.
+
 ### 2026-08-28 — TASK-P1-10
 
 - **Agent**: Codex

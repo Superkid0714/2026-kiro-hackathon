@@ -14,6 +14,16 @@ from typing import Any, Protocol
 
 
 class StorageBackend(Protocol):
+    def save_user(self, user: dict[str, Any]) -> None: ...
+
+    def get_user(self, user_id: str) -> dict[str, Any] | None: ...
+
+    def get_user_by_provider(
+        self, provider: str, provider_user_id: str
+    ) -> dict[str, Any] | None: ...
+
+    def link_user_profile(self, user_id: str, profile_id: str) -> dict[str, Any] | None: ...
+
     def save_profile(self, profile: dict[str, Any]) -> None: ...
 
     def list_profiles(self) -> list[dict[str, Any]]: ...
@@ -80,6 +90,40 @@ class LocalJsonStorage:
             payload = self._read()
             payload["profiles"][profile["profile_id"]] = deepcopy(profile)
             self._write(payload)
+
+    def save_user(self, user: dict[str, Any]) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["users"][user["user_id"]] = deepcopy(user)
+            self._write(payload)
+
+    def get_user(self, user_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            user = payload["users"].get(user_id)
+            return deepcopy(user) if user is not None else None
+
+    def get_user_by_provider(
+        self, provider: str, provider_user_id: str
+    ) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            for user in payload["users"].values():
+                if user["provider"] == provider and user["provider_user_id"] == provider_user_id:
+                    return deepcopy(user)
+            return None
+
+    def link_user_profile(self, user_id: str, profile_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            user = payload["users"].get(user_id)
+            if user is None:
+                return None
+            user["profile_id"] = profile_id
+            user["updated_at"] = datetime.now(UTC).isoformat()
+            payload["users"][user_id] = user
+            self._write(payload)
+            return deepcopy(user)
 
     def list_profiles(self) -> list[dict[str, Any]]:
         with self._lock:
@@ -212,6 +256,7 @@ class LocalJsonStorage:
         if not self.path.exists():
             return {
                 "profiles": {},
+                "users": {},
                 "interviews": {},
                 "recommendations": {},
                 "sessions": {},
@@ -226,6 +271,7 @@ class LocalJsonStorage:
 
         return {
             "profiles": content.get("profiles", {}),
+            "users": content.get("users", {}),
             "interviews": content.get("interviews", {}),
             "recommendations": content.get("recommendations", {}),
             "sessions": content.get("sessions", {}),
@@ -267,6 +313,49 @@ class DynamoDbStorage:
                 "active",
             )
         )
+
+    def save_user(self, user: dict[str, Any]) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"USER#{user['user_id']}",
+                "USER",
+                user,
+                "active",
+            )
+        )
+
+    def get_user(self, user_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(Key={"pk": f"USER#{user_id}", "sk": "USER"})
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
+
+    def get_user_by_provider(
+        self, provider: str, provider_user_id: str
+    ) -> dict[str, Any] | None:
+        response = self._table.scan(
+            FilterExpression=(
+                "#sk = :user AND provider = :provider AND provider_user_id = :provider_user_id"
+            ),
+            ExpressionAttributeNames={"#sk": "sk"},
+            ExpressionAttributeValues={
+                ":user": "USER",
+                ":provider": provider,
+                ":provider_user_id": provider_user_id,
+            },
+        )
+        items = response.get("Items", [])
+        if not items:
+            return None
+        return deepcopy(items[0]["payload"])
+
+    def link_user_profile(self, user_id: str, profile_id: str) -> dict[str, Any] | None:
+        user = self.get_user(user_id)
+        if user is None:
+            return None
+        user["profile_id"] = profile_id
+        user["updated_at"] = datetime.now(UTC).isoformat()
+        self.save_user(user)
+        return deepcopy(user)
 
     def list_profiles(self) -> list[dict[str, Any]]:
         response = self._table.scan(
@@ -505,6 +594,83 @@ class PostgresStorage:
                     profile["created_at"],
                 ),
             )
+
+    def save_user(self, user: dict[str, Any]) -> None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO users (
+                    user_id, provider, provider_user_id, profile_id, nickname, email,
+                    profile_image_url, payload, created_at, updated_at, last_login_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s)
+                ON CONFLICT (provider, provider_user_id) DO UPDATE SET
+                    user_id = EXCLUDED.user_id,
+                    profile_id = EXCLUDED.profile_id,
+                    nickname = EXCLUDED.nickname,
+                    email = EXCLUDED.email,
+                    profile_image_url = EXCLUDED.profile_image_url,
+                    payload = EXCLUDED.payload,
+                    updated_at = EXCLUDED.updated_at,
+                    last_login_at = EXCLUDED.last_login_at
+                """,
+                (
+                    user["user_id"],
+                    user["provider"],
+                    user["provider_user_id"],
+                    user.get("profile_id"),
+                    user["nickname"],
+                    user.get("email"),
+                    user.get("profile_image_url"),
+                    json.dumps(user, ensure_ascii=False),
+                    user["created_at"],
+                    user["updated_at"],
+                    user["last_login_at"],
+                ),
+            )
+
+    def get_user(self, user_id: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                "SELECT payload FROM users WHERE user_id = %s",
+                (user_id,),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def get_user_by_provider(
+        self, provider: str, provider_user_id: str
+    ) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                """
+                SELECT payload
+                FROM users
+                WHERE provider = %s AND provider_user_id = %s
+                """,
+                (provider, provider_user_id),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def link_user_profile(self, user_id: str, profile_id: str) -> dict[str, Any] | None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE users
+                SET profile_id = %s,
+                    updated_at = %s,
+                    payload = jsonb_set(payload, '{profile_id}', to_jsonb(%s::text), true)
+                WHERE user_id = %s
+                """,
+                (
+                    profile_id,
+                    datetime.now(UTC).isoformat(),
+                    profile_id,
+                    user_id,
+                ),
+            )
+        return self.get_user(user_id)
 
     def list_profiles(self) -> list[dict[str, Any]]:
         with self._cursor(row_factory="dict") as cursor:

@@ -37,9 +37,30 @@ function getStoredProfileContext() {
   }
 }
 
+function getStoredAuthContext() {
+  if (!isBrowser()) return null;
+  const raw = window.localStorage.getItem('roomonic-auth');
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
 function saveProfileContext(context) {
   if (!isBrowser()) return;
   window.localStorage.setItem('roomonic-profile', JSON.stringify(context));
+}
+
+function saveAuthContext(context) {
+  if (!isBrowser()) return;
+  window.localStorage.setItem('roomonic-auth', JSON.stringify(context));
+}
+
+function clearProfileContext() {
+  if (!isBrowser()) return;
+  window.localStorage.removeItem('roomonic-profile');
 }
 
 function getApiUrl(path) {
@@ -102,6 +123,28 @@ export function getCurrentProfileContext() {
   return getStoredProfileContext();
 }
 
+export function getCurrentAuthContext() {
+  return getStoredAuthContext();
+}
+
+export function getKakaoLoginUrl() {
+  const explicitUrl = process.env.NEXT_PUBLIC_KAKAO_AUTH_URL;
+  if (explicitUrl) return explicitUrl;
+
+  const restApiKey = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY;
+  const redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI;
+
+  if (!restApiKey || !redirectUri) return '';
+
+  const query = new URLSearchParams({
+    client_id: restApiKey,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+  });
+
+  return `https://kauth.kakao.com/oauth/authorize?${query.toString()}`;
+}
+
 export async function signup({ id, password }) {
   await delay(400);
   if (!id || !password) throw new Error('아이디와 비밀번호를 입력해주세요');
@@ -115,9 +158,14 @@ export async function login({ id, password }) {
 }
 
 export async function saveProfile(profileData) {
+  const auth = getStoredAuthContext();
+  const headers = { 'Content-Type': 'application/json' };
+  if (auth?.access_token) {
+    headers.Authorization = `Bearer ${auth.access_token}`;
+  }
   const body = await apiRequest('/profiles', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(profileData),
   });
   saveProfileContext({
@@ -185,6 +233,32 @@ export async function getCandidateDetail(id) {
 export async function sendMatchRequest(candidateId) {
   await delay(500);
   return { ok: true, status: 'pending', candidateId };
+}
+
+export async function exchangeKakaoCode(code) {
+  const body = await apiRequest('/auth/kakao/exchange', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code }),
+  });
+
+  saveAuthContext({
+    access_token: body.access_token,
+    token_type: body.token_type,
+    expires_in: body.expires_in,
+    user: body.user,
+  });
+
+  if (body.user?.profile_id) {
+    saveProfileContext({
+      profile_id: body.user.profile_id,
+      nickname: body.user.nickname,
+    });
+  } else {
+    clearProfileContext();
+  }
+
+  return body;
 }
 
 export async function registerAsCandidate() {

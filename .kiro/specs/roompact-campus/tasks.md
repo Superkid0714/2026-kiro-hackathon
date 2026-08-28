@@ -391,6 +391,24 @@
     - WebSocket 송수신 테스트
     - PostgreSQL 스키마 및 API 문서 갱신 확인
 
+- [x] TASK-P1-11 카카오 소셜 로그인 연동을 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.11, FR-08.12, FR-10.11, FR-11.9
+  - File Scope: `.kiro/specs/roompact-campus/*`, `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`, `backend/tests/main_backend/*`, `deploy/postgres/*`, `docs/api/*`, `frontend/roomonic-nextjs/app/*`, `frontend/roomonic-nextjs/lib/*`
+  - Depends on: TASK-P1-04, TASK-P1-05
+  - Acceptance:
+    - 프론트는 카카오 로그인 버튼으로 인가 페이지에 진입할 수 있어야 한다.
+    - 프론트 콜백 페이지는 인가 코드 수신 후 메인 백엔드 exchange API를 호출해야 한다.
+    - 메인 백엔드는 카카오 토큰 교환과 사용자 정보 조회 후 서비스 access token을 반환해야 한다.
+    - 기존 사용자는 재로그인 시 같은 서비스 사용자로 매핑되어야 한다.
+    - API 문서와 운영 배포 환경변수가 갱신되어야 한다.
+  - Verify:
+    - 카카오 exchange API 테스트
+    - 현재 사용자 조회 API 테스트
+    - 프론트 프로덕션 빌드 확인
+    - EC2 재배포 및 공개 로그인 콜백 경로 확인
+
 ## 작업 순서 가이드
 
 - `TASK-P0-01`과 `TASK-P0-02`로 두 서버를 먼저 띄운다.
@@ -415,3 +433,4 @@
 - Self Review: TASK-P1-08 완료. 지역 불일치 감점을 `-30`으로 강화해 같은 생활 패턴이어도 생활권 차이가 추천 우선순위에 크게 반영되도록 조정했다.
 - Self Review: TASK-P1-09 완료. 추천 후보 간 1:1 채팅방 생성, 메시지 이력 저장, WebSocket 실시간 전달, 프론트 채팅 화면 실연동을 추가했다.
 - Self Review: TASK-P1-10 완료. 추천 후보 간 대화 요청과 상호 수락 상태를 추가하고, 수락 전에는 채팅방이 열리지 않도록 백엔드에서 차단했다.
+- Self Review: TASK-P1-11 완료. 카카오 인가 코드 교환, 사용자 저장, 서비스 토큰 발급, 프론트 콜백 페이지와 운영 환경변수 반영까지 완료했다.

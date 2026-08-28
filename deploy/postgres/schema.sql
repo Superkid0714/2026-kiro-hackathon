@@ -21,6 +21,21 @@ CREATE TABLE IF NOT EXISTS profile_recommendations (
     updated_at TIMESTAMPTZ NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS users (
+    user_id TEXT PRIMARY KEY,
+    provider TEXT NOT NULL,
+    provider_user_id TEXT NOT NULL,
+    profile_id TEXT REFERENCES profiles(profile_id) ON DELETE SET NULL,
+    nickname TEXT NOT NULL,
+    email TEXT,
+    profile_image_url TEXT,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    last_login_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (provider, provider_user_id)
+);
+
 CREATE TABLE IF NOT EXISTS sessions (
     session_id TEXT PRIMARY KEY,
     session_name TEXT NOT NULL,

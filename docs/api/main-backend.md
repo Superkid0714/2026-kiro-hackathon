@@ -21,6 +21,8 @@
 - 상호 수락 완료 후 1:1 채팅방 생성
 - 채팅방 메시지 이력 조회
 - WebSocket 실시간 채팅
+- 카카오 로그인 코드 교환
+- 현재 로그인 사용자 조회
 - AI 백엔드 오류를 프론트가 처리 가능한 구조로 전달
 
 ## 프론트 연동 흐름
@@ -39,6 +41,7 @@
 - 그 다음 `POST /api/profiles/{profile_id}/chat-rooms`로 채팅방을 확보한다.
 - 기존 메시지 이력은 `GET /api/chat-rooms/{room_id}/messages`로 조회한다.
 - 실시간 메시지는 `ws://15.134.137.117/api/ws/chat-rooms/{room_id}`로 연결한다.
+- 카카오 로그인은 프론트 콜백 경로 `/auth/kakao/callback`에서 `code`를 받은 뒤 `POST /api/auth/kakao/exchange`를 호출해 완료한다.
 
 ## 현재 구현된 엔드포인트
 
@@ -52,6 +55,89 @@
 {
   "status": "ok",
   "service": "main-backend"
+}
+```
+
+### `POST /auth/kakao/exchange`
+
+- 용도: 카카오 인가 코드를 서비스 로그인으로 교환
+- 공개 호출 예시: `POST /api/auth/kakao/exchange`
+- 기능명세:
+  - 프론트 콜백 페이지가 카카오에서 받은 `code`를 메인 백엔드에 전달한다.
+  - 메인 백엔드는 카카오 토큰 API와 사용자 정보 API를 호출한다.
+  - 카카오 사용자 식별자를 기준으로 기존 서비스 사용자를 찾거나 새로 만든다.
+  - 메인 백엔드는 자체 서비스 access token과 현재 사용자 정보를 반환한다.
+  - 사용자가 아직 기본 프로필을 만들지 않았다면 `next_step`은 `complete-profile`이다.
+
+- Request Body 필드:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| code | String | 카카오 Redirect URI에 포함된 인가 코드 |
+
+- 요청:
+
+```json
+{
+  "code": "SplxlOBeZQQYbYS6WxSbIA"
+}
+```
+
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "access_token": "service-token",
+  "token_type": "Bearer",
+  "expires_in": 604800,
+  "user": {
+    "user_id": "user-a1b2c3d4e5",
+    "provider": "kakao",
+    "provider_user_id": "123456789",
+    "nickname": "민수",
+    "email": "roomonic@example.com",
+    "profile_image_url": "https://example.com/kakao-profile.png",
+    "profile_id": null,
+    "created_at": "2026-08-28T02:30:00+00:00",
+    "updated_at": "2026-08-28T02:30:00+00:00",
+    "last_login_at": "2026-08-28T02:30:00+00:00"
+  },
+  "next_step": "complete-profile"
+}
+```
+
+### `GET /auth/me`
+
+- 용도: 현재 로그인 사용자 조회
+- 공개 호출 예시: `GET /api/auth/me`
+- 기능명세:
+  - 서비스 access token 기준 현재 사용자 정보를 조회한다.
+  - 프론트는 앱 재진입 시 로그인 상태 복원에 사용할 수 있다.
+
+- Request Header:
+
+| Key | Value | 비고 |
+| --- | --- | --- |
+| Authorization | `Bearer {access_token}` | 로그인 완료 후 받은 서비스 토큰 |
+
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "user": {
+    "user_id": "user-a1b2c3d4e5",
+    "provider": "kakao",
+    "provider_user_id": "123456789",
+    "nickname": "민수",
+    "email": "roomonic@example.com",
+    "profile_image_url": "https://example.com/kakao-profile.png",
+    "profile_id": "profile-a1b2c3d4",
+    "created_at": "2026-08-28T02:30:00+00:00",
+    "updated_at": "2026-08-28T02:45:00+00:00",
+    "last_login_at": "2026-08-28T02:45:00+00:00"
+  }
 }
 ```
 

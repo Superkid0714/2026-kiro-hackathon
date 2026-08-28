@@ -2,8 +2,11 @@
 import Link from 'next/link';
 import Shell from '@/components/Shell';
 import { StatusBar, Button } from '@/components/UI';
+import { getKakaoLoginUrl } from '@/lib/mockApi';
 
 export default function LandingPage() {
+  const kakaoLoginUrl = getKakaoLoginUrl();
+
   return (
     <Shell dark>
       <StatusBar dark />
@@ -48,14 +51,22 @@ export default function LandingPage() {
         </div>
       </div>
       <div className="relative z-10 px-6 pb-6">
-        <Link href="/signup">
-          <Button>시작하기 →</Button>
-        </Link>
+        {kakaoLoginUrl ? (
+          <a href={kakaoLoginUrl} className="block">
+            <Button
+              className="bg-[#FEE500] text-[#191600] shadow-none hover:bg-[#F7DC00]"
+            >
+              <span className="text-[16px] leading-none">💬</span>
+              카카오로 시작하기
+            </Button>
+          </a>
+        ) : (
+          <Button className="bg-[#FEE500] text-[#191600] shadow-none opacity-60 cursor-not-allowed">
+            카카오 로그인 설정 필요
+          </Button>
+        )}
         <p className="text-center text-[11.5px] text-[#B9B2E6] mt-2.5">
-          이미 계정이 있으신가요?{' '}
-          <Link href="/login" className="font-bold text-white">
-            로그인
-          </Link>
+          회원가입과 로그인은 카카오 계정으로 통합됩니다
         </p>
       </div>
     </Shell>

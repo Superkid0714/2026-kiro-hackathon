@@ -39,6 +39,7 @@
 - 학생 추천 후보 자동 계산 및 조회
 - 추천 후보 간 상호 수락 요청 관리
 - 상호 수락 완료 후 1:1 채팅방 생성 및 메시지 저장
+- 카카오 로그인 코드 교환과 서비스 사용자 식별
 - WebSocket 기반 실시간 채팅 연결 관리
 - 학생 입력 저장
 - 세션/결과 조회
@@ -250,6 +251,31 @@ fallback.py
 - AI 백엔드 연결 실패 시 일반 백엔드는 연결 오류를 구조화된 응답으로 반환한다.
 - AI 백엔드 처리 실패 시 일반 백엔드는 원인 코드를 유지한 채 상위 호출자에 전달한다.
 
+## 인증 설계
+
+### 카카오 로그인 흐름
+
+1. 프론트는 카카오 인가 페이지로 이동한다.
+2. 카카오는 등록된 Redirect URI로 `code`를 포함해 다시 보낸다.
+3. 프론트 콜백 페이지는 `code`를 메인 백엔드 `POST /auth/kakao/exchange`로 전달한다.
+4. 메인 백엔드는 `https://kauth.kakao.com/oauth/token`으로 토큰 교환을 수행한다.
+5. 메인 백엔드는 `https://kapi.kakao.com/v2/user/me`로 사용자 정보를 조회한다.
+6. 메인 백엔드는 `users` 테이블에 카카오 사용자와 서비스 사용자를 매핑한다.
+7. 메인 백엔드는 자체 서명 access token과 현재 사용자 정보를 프론트에 반환한다.
+
+### 사용자 저장 규칙
+
+- 서비스 사용자는 카카오 `provider_user_id` 기준으로 중복 없이 식별한다.
+- 사용자가 이미 존재하면 `nickname`, `email`, `profile_image_url`, `last_login_at`을 갱신한다.
+- 사용자가 아직 프로필을 만들지 않은 경우 `profile_id`는 비워둘 수 있다.
+- 추후 `POST /profiles`가 인증된 사용자 기준으로 호출되면 해당 `profile_id`를 사용자 계정과 연결할 수 있다.
+
+### API 경계
+
+- 일반 백엔드는 `POST /auth/kakao/exchange`로 인가 코드를 받아 카카오 토큰 교환과 사용자 로그인을 처리한다.
+- 일반 백엔드는 `GET /auth/me`로 현재 access token 기준 사용자 정보를 반환한다.
+- 프론트는 카카오 토큰을 직접 저장하지 않고, 메인 백엔드가 발급한 서비스 access token만 사용한다.
+
 ## 점수 계산 설계
 
 ### 입력
@@ -329,6 +355,7 @@ fallback은 다음 속성을 만족해야 한다.
 - 학생 프로필별 생활 인터뷰 응답
 - 학생 프로필별 캐릭터 분류 결과
 - 학생 프로필별 추천 후보 목록
+- 서비스 사용자 계정과 카카오 연동 정보
 - 채팅방 메타데이터
 - 채팅방 메시지 이력
 - 채팅 요청 상태
@@ -371,6 +398,18 @@ fallback은 다음 속성을 만족해야 한다.
   - `profile_id`
   - `payload`
   - `updated_at`
+- `users`
+  - `user_id`
+  - `provider`
+  - `provider_user_id`
+  - `nickname`
+  - `email`
+  - `profile_image_url`
+  - `profile_id`
+  - `payload`
+  - `created_at`
+  - `updated_at`
+  - `last_login_at`
 - `chat_rooms`
   - `room_id`
   - `participant_a_profile_id`

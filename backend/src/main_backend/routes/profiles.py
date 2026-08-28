@@ -1,9 +1,10 @@
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Header, HTTPException, status
 from pydantic import BaseModel, Field, model_validator
 
 from main_backend.services.profile_service import profile_service
+from main_backend.services.auth_service import auth_service
 
 router = APIRouter(prefix="/profiles", tags=["profiles"])
 
@@ -76,8 +77,12 @@ class ProfileInterviewRequest(BaseModel):
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
-def create_profile(payload: ProfileCreateRequest) -> dict[str, object]:
+def create_profile(
+    payload: ProfileCreateRequest,
+    authorization: str | None = Header(default=None),
+) -> dict[str, object]:
     profile = profile_service.create_profile(payload.model_dump())
+    auth_service.link_profile(authorization, profile["profile_id"])
     return {"status": "created", "profile": profile}
 
 
