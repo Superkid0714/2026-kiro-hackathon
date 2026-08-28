@@ -24,6 +24,71 @@ class ChatService:
         self._connections: dict[str, set[WebSocket]] = defaultdict(set)
         self._lock = asyncio.Lock()
 
+    def create_or_get_match_request(
+        self, profile_id: str, other_profile_id: str
+    ) -> dict[str, Any]:
+        if profile_id == other_profile_id:
+            raise ChatServiceError("cannot_chat_with_self")
+
+        storage = get_storage_backend()
+        profile = storage.get_profile(profile_id)
+        other_profile = storage.get_profile(other_profile_id)
+        if profile is None or other_profile is None:
+            raise ChatServiceError("profile_not_found")
+
+        participant_a, participant_b = sorted([profile_id, other_profile_id])
+        existing = storage.find_match_request(participant_a, participant_b)
+        if existing is not None:
+            return deepcopy(existing)
+
+        now = datetime.now(UTC).isoformat()
+        request = {
+            "request_id": f"match-{uuid4().hex[:10]}",
+            "participant_a_profile_id": participant_a,
+            "participant_b_profile_id": participant_b,
+            "requester_profile_id": profile_id,
+            "target_profile_id": other_profile_id,
+            "status": "pending",
+            "requester_accepted": True,
+            "target_accepted": False,
+            "created_at": now,
+            "updated_at": now,
+        }
+        storage.save_match_request(request)
+        return deepcopy(request)
+
+    def accept_match_request(self, request_id: str, profile_id: str) -> dict[str, Any]:
+        storage = get_storage_backend()
+        request = storage.get_match_request(request_id)
+        if request is None:
+            raise ChatServiceError("match_request_not_found")
+
+        participants = {
+            request["participant_a_profile_id"],
+            request["participant_b_profile_id"],
+        }
+        if profile_id not in participants:
+            raise ChatServiceError("match_request_forbidden")
+        if profile_id != request["target_profile_id"] and not request["target_accepted"]:
+            raise ChatServiceError("match_request_acceptor_mismatch")
+
+        if request["status"] == "accepted":
+            return deepcopy(request)
+
+        now = datetime.now(UTC).isoformat()
+        request["target_accepted"] = True
+        request["status"] = "accepted"
+        request["accepted_by_profile_id"] = profile_id
+        request["accepted_at"] = now
+        request["updated_at"] = now
+        storage.save_match_request(request)
+        return deepcopy(request)
+
+    def get_match_request_between(self, profile_id: str, other_profile_id: str) -> dict[str, Any] | None:
+        participant_a, participant_b = sorted([profile_id, other_profile_id])
+        request = get_storage_backend().find_match_request(participant_a, participant_b)
+        return deepcopy(request) if request is not None else None
+
     def create_or_get_room(self, profile_id: str, other_profile_id: str) -> dict[str, Any]:
         if profile_id == other_profile_id:
             raise ChatServiceError("cannot_chat_with_self")
@@ -35,6 +100,10 @@ class ChatService:
             raise ChatServiceError("profile_not_found")
 
         participant_a, participant_b = sorted([profile_id, other_profile_id])
+        request = storage.find_match_request(participant_a, participant_b)
+        if request is None or request.get("status") != "accepted":
+            raise ChatServiceError("chat_requires_mutual_acceptance")
+
         room = storage.find_chat_room(participant_a, participant_b)
         if room is not None:
             return deepcopy(room)

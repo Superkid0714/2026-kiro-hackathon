@@ -48,6 +48,14 @@ class StorageBackend(Protocol):
 
     def get_chat_room(self, room_id: str) -> dict[str, Any] | None: ...
 
+    def save_match_request(self, request: dict[str, Any]) -> None: ...
+
+    def find_match_request(
+        self, participant_a: str, participant_b: str
+    ) -> dict[str, Any] | None: ...
+
+    def get_match_request(self, request_id: str) -> dict[str, Any] | None: ...
+
     def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None: ...
 
     def list_chat_messages(self, room_id: str) -> list[dict[str, Any]]: ...
@@ -162,6 +170,29 @@ class LocalJsonStorage:
             room = payload["chat_rooms"].get(room_id)
             return deepcopy(room) if room is not None else None
 
+    def save_match_request(self, request: dict[str, Any]) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["match_requests"][request["request_id"]] = deepcopy(request)
+            self._write(payload)
+
+    def find_match_request(self, participant_a: str, participant_b: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            for request in payload["match_requests"].values():
+                if (
+                    request["participant_a_profile_id"] == participant_a
+                    and request["participant_b_profile_id"] == participant_b
+                ):
+                    return deepcopy(request)
+            return None
+
+    def get_match_request(self, request_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            request = payload["match_requests"].get(request_id)
+            return deepcopy(request) if request is not None else None
+
     def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None:
         with self._lock:
             payload = self._read()
@@ -186,6 +217,7 @@ class LocalJsonStorage:
                 "sessions": {},
                 "results": {},
                 "chat_rooms": {},
+                "match_requests": {},
                 "chat_messages": {},
             }
 
@@ -199,6 +231,7 @@ class LocalJsonStorage:
             "sessions": content.get("sessions", {}),
             "results": content.get("results", {}),
             "chat_rooms": content.get("chat_rooms", {}),
+            "match_requests": content.get("match_requests", {}),
             "chat_messages": content.get("chat_messages", {}),
         }
 
@@ -360,6 +393,39 @@ class DynamoDbStorage:
 
     def get_chat_room(self, room_id: str) -> dict[str, Any] | None:
         response = self._table.get_item(Key={"pk": f"CHATROOM#{room_id}", "sk": "ROOM"})
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
+
+    def save_match_request(self, request: dict[str, Any]) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"MATCHREQUEST#{request['request_id']}",
+                "REQUEST",
+                request,
+                request["status"],
+            )
+        )
+
+    def find_match_request(self, participant_a: str, participant_b: str) -> dict[str, Any] | None:
+        response = self._table.scan(
+            FilterExpression=(
+                "#sk = :request AND participant_a_profile_id = :a "
+                "AND participant_b_profile_id = :b"
+            ),
+            ExpressionAttributeNames={"#sk": "sk"},
+            ExpressionAttributeValues={
+                ":request": "REQUEST",
+                ":a": participant_a,
+                ":b": participant_b,
+            },
+        )
+        items = response.get("Items", [])
+        if not items:
+            return None
+        return deepcopy(items[0]["payload"])
+
+    def get_match_request(self, request_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(Key={"pk": f"MATCHREQUEST#{request_id}", "sk": "REQUEST"})
         item = response.get("Item")
         return deepcopy(item["payload"]) if item is not None else None
 
@@ -640,6 +706,58 @@ class PostgresStorage:
             cursor.execute(
                 "SELECT payload FROM chat_rooms WHERE room_id = %s",
                 (room_id,),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def save_match_request(self, request: dict[str, Any]) -> None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO match_requests (
+                    request_id, participant_a_profile_id, participant_b_profile_id,
+                    requester_profile_id, target_profile_id, status, payload,
+                    created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s)
+                ON CONFLICT (participant_a_profile_id, participant_b_profile_id) DO UPDATE SET
+                    requester_profile_id = EXCLUDED.requester_profile_id,
+                    target_profile_id = EXCLUDED.target_profile_id,
+                    status = EXCLUDED.status,
+                    payload = EXCLUDED.payload,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (
+                    request["request_id"],
+                    request["participant_a_profile_id"],
+                    request["participant_b_profile_id"],
+                    request["requester_profile_id"],
+                    request["target_profile_id"],
+                    request["status"],
+                    json.dumps(request, ensure_ascii=False),
+                    request["created_at"],
+                    request["updated_at"],
+                ),
+            )
+
+    def find_match_request(self, participant_a: str, participant_b: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                """
+                SELECT payload
+                FROM match_requests
+                WHERE participant_a_profile_id = %s AND participant_b_profile_id = %s
+                """,
+                (participant_a, participant_b),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def get_match_request(self, request_id: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                "SELECT payload FROM match_requests WHERE request_id = %s",
+                (request_id,),
             )
             row = cursor.fetchone()
             return deepcopy(row["payload"]) if row is not None else None

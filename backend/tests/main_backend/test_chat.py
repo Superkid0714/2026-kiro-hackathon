@@ -28,6 +28,16 @@ def test_create_chat_room_reuses_existing_pair() -> None:
     first_profile = _create_profile("민수")
     second_profile = _create_profile("서연")
 
+    request_response = client.post(
+        f"/profiles/{first_profile}/match-requests",
+        json={"other_profile_id": second_profile},
+    )
+    request_id = request_response.json()["match_request"]["request_id"]
+    accept_response = client.post(
+        f"/match-requests/{request_id}/accept",
+        json={"profile_id": second_profile},
+    )
+
     first_response = client.post(
         f"/profiles/{first_profile}/chat-rooms",
         json={"other_profile_id": second_profile},
@@ -37,14 +47,42 @@ def test_create_chat_room_reuses_existing_pair() -> None:
         json={"other_profile_id": first_profile},
     )
 
+    assert request_response.status_code == 201
+    assert accept_response.status_code == 200
     assert first_response.status_code == 201
     assert second_response.status_code == 201
     assert first_response.json()["room"]["room_id"] == second_response.json()["room"]["room_id"]
 
 
+def test_chat_room_requires_mutual_acceptance() -> None:
+    first_profile = _create_profile("민수")
+    second_profile = _create_profile("서연")
+
+    request_response = client.post(
+        f"/profiles/{first_profile}/match-requests",
+        json={"other_profile_id": second_profile},
+    )
+    room_response = client.post(
+        f"/profiles/{first_profile}/chat-rooms",
+        json={"other_profile_id": second_profile},
+    )
+
+    assert request_response.status_code == 201
+    assert room_response.status_code == 403
+    assert room_response.json()["detail"] == "chat_requires_mutual_acceptance"
+
+
 def test_get_chat_room_messages_returns_saved_history() -> None:
     first_profile = _create_profile("민수")
     second_profile = _create_profile("서연")
+    request_id = client.post(
+        f"/profiles/{first_profile}/match-requests",
+        json={"other_profile_id": second_profile},
+    ).json()["match_request"]["request_id"]
+    client.post(
+        f"/match-requests/{request_id}/accept",
+        json={"profile_id": second_profile},
+    )
     room_response = client.post(
         f"/profiles/{first_profile}/chat-rooms",
         json={"other_profile_id": second_profile},
@@ -83,6 +121,14 @@ def test_get_chat_room_messages_returns_saved_history() -> None:
 def test_websocket_broadcasts_to_both_participants() -> None:
     first_profile = _create_profile("민수")
     second_profile = _create_profile("서연")
+    request_id = client.post(
+        f"/profiles/{first_profile}/match-requests",
+        json={"other_profile_id": second_profile},
+    ).json()["match_request"]["request_id"]
+    client.post(
+        f"/match-requests/{request_id}/accept",
+        json={"profile_id": second_profile},
+    )
     room_id = client.post(
         f"/profiles/{first_profile}/chat-rooms",
         json={"other_profile_id": second_profile},
@@ -113,3 +159,26 @@ def test_websocket_broadcasts_to_both_participants() -> None:
     assert second_message["type"] == "message"
     assert first_message["message"]["message_id"] == second_message["message"]["message_id"]
     assert second_message["message"]["sender_nickname"] == "민수"
+
+
+def test_accept_match_request_marks_request_as_accepted() -> None:
+    first_profile = _create_profile("민수")
+    second_profile = _create_profile("서연")
+
+    create_response = client.post(
+        f"/profiles/{first_profile}/match-requests",
+        json={"other_profile_id": second_profile},
+    )
+    request_id = create_response.json()["match_request"]["request_id"]
+
+    accept_response = client.post(
+        f"/match-requests/{request_id}/accept",
+        json={"profile_id": second_profile},
+    )
+
+    body = accept_response.json()
+    assert create_response.status_code == 201
+    assert accept_response.status_code == 200
+    assert body["status"] == "accepted"
+    assert body["match_request"]["status"] == "accepted"
+    assert body["match_request"]["accepted_by_profile_id"] == second_profile

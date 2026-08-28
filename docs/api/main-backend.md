@@ -17,7 +17,8 @@
 - 매칭 결과 조회
 - 프로필별 생활 인터뷰 저장 및 조회
 - 프로필별 캐릭터 유형 산출
-- 추천 후보 간 1:1 채팅방 생성
+- 추천 후보 간 대화 요청 생성 및 수락
+- 상호 수락 완료 후 1:1 채팅방 생성
 - 채팅방 메시지 이력 조회
 - WebSocket 실시간 채팅
 - AI 백엔드 오류를 프론트가 처리 가능한 구조로 전달
@@ -33,7 +34,9 @@
 - 인터뷰 저장이 끝나면 추천 후보가 내부적으로 자동 계산된다.
 - 추천 후보 확인은 `GET /api/profiles/{profile_id}/recommendations`로 한다.
 - 저장된 인터뷰를 다시 불러와야 할 때는 `GET /api/profiles/{profile_id}/interview`를 사용한다.
-- 추천 후보와 대화를 시작할 때는 `POST /api/profiles/{profile_id}/chat-rooms`로 채팅방을 확보한다.
+- 추천 후보와 대화를 시작할 때는 먼저 `POST /api/profiles/{profile_id}/match-requests`로 대화 요청을 만든다.
+- 상대가 요청을 수락하면 `POST /api/match-requests/{request_id}/accept` 응답이 `accepted`가 된다.
+- 그 다음 `POST /api/profiles/{profile_id}/chat-rooms`로 채팅방을 확보한다.
 - 기존 메시지 이력은 `GET /api/chat-rooms/{room_id}/messages`로 조회한다.
 - 실시간 메시지는 `ws://15.134.137.117/api/ws/chat-rooms/{room_id}`로 연결한다.
 
@@ -454,12 +457,112 @@
 }
 ```
 
+### `POST /profiles/{profile_id}/match-requests`
+
+- 용도: 추천 후보에게 대화 요청 생성
+- 공개 호출 예시: `POST /api/profiles/{profile_id}/match-requests`
+- 기능명세:
+  - 현재 사용자가 상대 프로필에게 대화 시작 요청을 보낸다.
+  - 요청을 보낸 사용자는 이미 동의한 상태로 저장된다.
+  - 상대가 아직 수락하지 않았으면 상태는 `pending`이다.
+  - 같은 두 프로필 조합으로 다시 요청하면 기존 요청을 그대로 반환한다.
+- Path Variable:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| profile_id | String | 요청을 보내는 사용자 프로필 ID |
+
+- Request Body 필드:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| other_profile_id | String | 요청 대상 프로필 ID |
+
+- 요청:
+
+```json
+{
+  "other_profile_id": "profile-b2c3d4e5"
+}
+```
+
+- 성공 응답:
+
+```json
+{
+  "status": "pending",
+  "match_request": {
+    "request_id": "match-9b21f4cd10",
+    "participant_a_profile_id": "profile-a1b2c3d4",
+    "participant_b_profile_id": "profile-b2c3d4e5",
+    "requester_profile_id": "profile-a1b2c3d4",
+    "target_profile_id": "profile-b2c3d4e5",
+    "status": "pending",
+    "requester_accepted": true,
+    "target_accepted": false,
+    "created_at": "2026-08-28T09:15:00+00:00",
+    "updated_at": "2026-08-28T09:15:00+00:00"
+  }
+}
+```
+
+### `POST /match-requests/{request_id}/accept`
+
+- 용도: 받은 대화 요청 수락
+- 공개 호출 예시: `POST /api/match-requests/{request_id}/accept`
+- 기능명세:
+  - 상대 사용자가 자신에게 온 대화 요청을 수락한다.
+  - 수락이 완료되면 해당 조합은 채팅방 생성 가능 상태가 된다.
+  - 이미 수락된 요청을 다시 수락하면 현재 상태를 그대로 반환한다.
+- Path Variable:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| request_id | String | 대화 요청 ID |
+
+- Request Body 필드:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| profile_id | String | 요청을 수락하는 사용자 프로필 ID |
+
+- 요청:
+
+```json
+{
+  "profile_id": "profile-b2c3d4e5"
+}
+```
+
+- 성공 응답:
+
+```json
+{
+  "status": "accepted",
+  "match_request": {
+    "request_id": "match-9b21f4cd10",
+    "participant_a_profile_id": "profile-a1b2c3d4",
+    "participant_b_profile_id": "profile-b2c3d4e5",
+    "requester_profile_id": "profile-a1b2c3d4",
+    "target_profile_id": "profile-b2c3d4e5",
+    "status": "accepted",
+    "requester_accepted": true,
+    "target_accepted": true,
+    "accepted_by_profile_id": "profile-b2c3d4e5",
+    "accepted_at": "2026-08-28T09:18:00+00:00",
+    "created_at": "2026-08-28T09:15:00+00:00",
+    "updated_at": "2026-08-28T09:18:00+00:00"
+  }
+}
+```
+
 ### `POST /profiles/{profile_id}/chat-rooms`
 
-- 용도: 추천 후보 또는 연결된 상대와의 1:1 채팅방 생성 또는 재사용
+- 용도: 상호 수락이 끝난 상대와의 1:1 채팅방 생성 또는 재사용
 - 공개 호출 예시: `POST /api/profiles/{profile_id}/chat-rooms`
 - 기능명세:
   - 현재 사용자와 상대 프로필 조합 기준으로 채팅방을 생성한다.
+  - 두 사용자의 대화 요청이 상호 수락 상태가 아니면 채팅방을 만들 수 없다.
   - 같은 두 프로필 조합의 채팅방이 이미 있으면 새로 만들지 않고 기존 방을 반환한다.
   - 참가자 순서가 바뀌어도 같은 채팅방으로 취급한다.
 - Path Variable:
@@ -508,6 +611,14 @@
     "created_at": "2026-08-28T09:15:00+00:00",
     "updated_at": "2026-08-28T09:15:00+00:00"
   }
+}
+```
+
+- 실패 응답:
+
+```json
+{
+  "detail": "chat_requires_mutual_acceptance"
 }
 ```
 

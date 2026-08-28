@@ -289,6 +289,60 @@
         }
       }
     },
+    "/profiles/{profile_id}/match-requests": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Create Match Request",
+        "operationId": "create_match_request_profiles__profile_id__match_requests_post",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRoomCreateRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Create Match Request Profiles  Profile Id  Match Requests Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/profiles/{profile_id}/chat-rooms": {
       "post": {
         "tags": [
@@ -326,6 +380,60 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Create Chat Room Profiles  Profile Id  Chat Rooms Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/match-requests/{request_id}/accept": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Accept Match Request",
+        "operationId": "accept_match_request_match_requests__request_id__accept_post",
+        "parameters": [
+          {
+            "name": "request_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Request Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MatchRequestAcceptRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Accept Match Request Match Requests  Request Id  Accept Post"
                 }
               }
             }
@@ -588,6 +696,21 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "MatchRequestAcceptRequest": {
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Profile Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile_id"
+        ],
+        "title": "MatchRequestAcceptRequest"
       },
       "ProfileCreateRequest": {
         "properties": {

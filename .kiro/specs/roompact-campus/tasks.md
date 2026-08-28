@@ -353,7 +353,7 @@
     - 지역 불일치 강한 감점 테스트
     - 추천 API 문서 갱신 확인
 
-- [ ] TASK-P1-09 추천 후보 간 실시간 채팅 기능을 추가한다
+- [x] TASK-P1-09 추천 후보 간 실시간 채팅 기능을 추가한다
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-01.8, FR-01.9, FR-08.9, FR-08.10, FR-10.8, FR-10.9, FR-11.8, NFR-11
@@ -371,6 +371,25 @@
     - WebSocket 송수신 테스트
     - nginx WebSocket 프록시 설정 확인
     - 프론트 채팅 페이지 실제 API 연동 확인
+
+- [x] TASK-P1-10 상호 수락 완료 후에만 채팅이 열리도록 채팅 게이트를 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.8, FR-01.10, FR-08.9, FR-08.10, FR-10.10, NFR-11
+  - File Scope: `.kiro/specs/roompact-campus/*`, `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`, `backend/tests/main_backend/*`, `deploy/postgres/*`, `docs/api/*`
+  - Depends on: TASK-P1-09
+  - Acceptance:
+    - 메인 백엔드는 추천 후보 간 대화 요청 생성 API를 제공해야 한다.
+    - 상대 프로필이 수락하기 전에는 채팅방 생성 API가 실패해야 한다.
+    - 상대 프로필이 수락한 뒤에는 같은 두 프로필 조합의 채팅방이 생성되거나 재사용되어야 한다.
+    - WebSocket 연결과 메시지 이력 조회는 승인된 채팅방 기준으로 유지되어야 한다.
+    - 프론트 공유용 API 문서가 상호 수락 흐름 기준으로 갱신되어야 한다.
+  - Verify:
+    - 매칭 요청 생성 테스트
+    - 수락 전 채팅방 생성 차단 테스트
+    - 수락 후 채팅방 생성/재사용 테스트
+    - WebSocket 송수신 테스트
+    - PostgreSQL 스키마 및 API 문서 갱신 확인
 
 ## 작업 순서 가이드
 
@@ -395,3 +414,4 @@
 - Self Review: TASK-P1-07 완료. 인터뷰 저장 시 자동 추천 후보를 계산하고, 기존 제출자 추천까지 함께 갱신하는 양방향 추천 API와 저장 구조를 추가했다.
 - Self Review: TASK-P1-08 완료. 지역 불일치 감점을 `-30`으로 강화해 같은 생활 패턴이어도 생활권 차이가 추천 우선순위에 크게 반영되도록 조정했다.
 - Self Review: TASK-P1-09 완료. 추천 후보 간 1:1 채팅방 생성, 메시지 이력 저장, WebSocket 실시간 전달, 프론트 채팅 화면 실연동을 추가했다.
+- Self Review: TASK-P1-10 완료. 추천 후보 간 대화 요청과 상호 수락 상태를 추가하고, 수락 전에는 채팅방이 열리지 않도록 백엔드에서 차단했다.

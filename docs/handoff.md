@@ -24,6 +24,27 @@
 
 ## 기록
 
+### 2026-08-28 — TASK-P1-10
+
+- **Agent**: Codex
+- **Task**: TASK-P1-10 상호 수락 완료 후에만 채팅이 열리도록 채팅 게이트 추가
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/main_backend/routes/chat.py`
+  - `backend/src/main_backend/services/chat_service.py`
+  - `backend/src/main_backend/services/storage.py`
+  - `backend/tests/main_backend/test_chat.py`
+  - `deploy/postgres/schema.sql`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+- **테스트 결과**: PASS — `.\.venv\Scripts\python.exe -m pytest backend/tests/main_backend/test_chat.py`, `powershell -ExecutionPolicy Bypass -File .\backend\scripts\verify.ps1`
+- **남은 작업**:
+  - 운영 EC2 PostgreSQL에 `match_requests` 테이블 반영 후 재배포
+  - 프론트 팀이 요청 생성/수락 UI 흐름에 새 엔드포인트를 연결
+- **비고**: 채팅방은 이제 상호 수락 상태일 때만 생성되며, WebSocket과 메시지 이력은 기존처럼 승인된 방 기준으로 동작함.
+
 ### 2026-08-28 — TASK-P1-09
 
 - **Agent**: Codex

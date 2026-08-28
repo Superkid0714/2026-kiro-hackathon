@@ -15,6 +15,38 @@ class ChatRoomCreateRequest(BaseModel):
     other_profile_id: str = Field(min_length=1, max_length=64)
 
 
+class MatchRequestAcceptRequest(BaseModel):
+    profile_id: str = Field(min_length=1, max_length=64)
+
+
+@profiles_router.post("/{profile_id}/match-requests", status_code=status.HTTP_201_CREATED)
+def create_match_request(profile_id: str, payload: ChatRoomCreateRequest) -> dict[str, object]:
+    try:
+        request = chat_service.create_or_get_match_request(profile_id, payload.other_profile_id)
+    except ChatServiceError as exc:
+        if exc.code == "profile_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.code) from exc
+        if exc.code == "cannot_chat_with_self":
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+
+    return {"status": request["status"], "match_request": request}
+
+
+@router.post("/match-requests/{request_id}/accept")
+def accept_match_request(request_id: str, payload: MatchRequestAcceptRequest) -> dict[str, object]:
+    try:
+        request = chat_service.accept_match_request(request_id, payload.profile_id)
+    except ChatServiceError as exc:
+        if exc.code == "match_request_not_found":
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.code) from exc
+        if exc.code in {"match_request_forbidden", "match_request_acceptor_mismatch"}:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=exc.code) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+
+    return {"status": request["status"], "match_request": request}
+
+
 @profiles_router.post("/{profile_id}/chat-rooms", status_code=status.HTTP_201_CREATED)
 def create_chat_room(profile_id: str, payload: ChatRoomCreateRequest) -> dict[str, object]:
     try:
@@ -24,6 +56,8 @@ def create_chat_room(profile_id: str, payload: ChatRoomCreateRequest) -> dict[st
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=exc.code) from exc
         if exc.code == "cannot_chat_with_self":
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
+        if exc.code == "chat_requires_mutual_acceptance":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=exc.code) from exc
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=exc.code) from exc
 
     return {"status": "ready", "room": room}

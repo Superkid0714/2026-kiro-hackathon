@@ -48,6 +48,19 @@ CREATE TABLE IF NOT EXISTS chat_rooms (
     UNIQUE (participant_a_profile_id, participant_b_profile_id)
 );
 
+CREATE TABLE IF NOT EXISTS match_requests (
+    request_id TEXT PRIMARY KEY,
+    participant_a_profile_id TEXT NOT NULL REFERENCES profiles(profile_id) ON DELETE CASCADE,
+    participant_b_profile_id TEXT NOT NULL REFERENCES profiles(profile_id) ON DELETE CASCADE,
+    requester_profile_id TEXT NOT NULL REFERENCES profiles(profile_id) ON DELETE CASCADE,
+    target_profile_id TEXT NOT NULL REFERENCES profiles(profile_id) ON DELETE CASCADE,
+    status TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL,
+    updated_at TIMESTAMPTZ NOT NULL,
+    UNIQUE (participant_a_profile_id, participant_b_profile_id)
+);
+
 CREATE TABLE IF NOT EXISTS chat_messages (
     message_id TEXT PRIMARY KEY,
     room_id TEXT NOT NULL REFERENCES chat_rooms(room_id) ON DELETE CASCADE,
