@@ -453,6 +453,48 @@
             }
           }
         }
+      },
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "List Match Requests",
+        "operationId": "list_match_requests_profiles__profile_id__match_requests_get",
+        "parameters": [
+          {
+            "name": "profile_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response List Match Requests Profiles  Profile Id  Match Requests Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/profiles/{profile_id}/chat-rooms": {
@@ -590,6 +632,114 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Get Chat Room Messages Chat Rooms  Room Id  Messages Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat-rooms/{room_id}/roommate-confirmation": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Confirm Roommate",
+        "operationId": "confirm_roommate_chat_rooms__room_id__roommate_confirmation_post",
+        "parameters": [
+          {
+            "name": "room_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Room Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoommateConfirmationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Confirm Roommate Chat Rooms  Room Id  Roommate Confirmation Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/chat-rooms/{room_id}/pact": {
+      "get": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Get Roommate Pact",
+        "operationId": "get_roommate_pact_chat_rooms__room_id__pact_get",
+        "parameters": [
+          {
+            "name": "room_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Room Id"
+            }
+          },
+          {
+            "name": "profile_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Profile Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Get Roommate Pact Chat Rooms  Room Id  Pact Get"
                 }
               }
             }
@@ -1115,6 +1265,14 @@
               "필요 없음"
             ],
             "title": "Absence Notice"
+          },
+          "hardcut_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 3,
+            "title": "Hardcut Conditions"
           }
         },
         "type": "object",
@@ -1143,6 +1301,21 @@
           "absence_notice"
         ],
         "title": "ProfileInterviewRequest"
+      },
+      "RoommateConfirmationRequest": {
+        "properties": {
+          "profile_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Profile Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile_id"
+        ],
+        "title": "RoommateConfirmationRequest"
       },
       "SessionCreateRequest": {
         "properties": {

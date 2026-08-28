@@ -69,7 +69,7 @@
     - 학생 쌍별 호환 점수와 추천 이유 근거를 계산해야 한다.
     - 필수 조건 충돌 쌍은 배정 후보에서 제외 가능한 형태로 표시되어야 한다.
     - 동일 입력에 대해 동일 점수와 동일 근거가 반환되어야 한다.
-    - `backend/src/ai_backend/llm_client.py` 또는 Bedrock 관련 import가 없어야 한다.
+    - `backend/src/ai_backend/llm_client.py` 또는 Gemini API 관련 import가 없어야 한다.
   - Verify:
     - 필수 조건 충돌 제외 테스트
     - 선호 가중치 반영 테스트
@@ -86,25 +86,25 @@
     - `networkx` 매칭 API를 사용해 전체 학생 집합의 2인실 배정을 계산해야 한다.
     - 한 학생이 정확히 하나의 페어에만 속해야 한다.
     - 완전 매칭이 불가능한 경우 구조화된 실패 결과를 반환해야 한다.
-    - `backend/src/ai_backend/llm_client.py` 또는 Bedrock 관련 import가 없어야 한다.
+    - `backend/src/ai_backend/llm_client.py` 또는 Gemini API 관련 import가 없어야 한다.
   - Verify:
     - 짝수 인원 완전 매칭 테스트
     - 매칭 불가 입력 테스트
     - 중복 배정 방지 테스트
     - 금지 import 검사 Hook 통과
 
-- [x] TASK-P0-06 Bedrock 클라이언트와 결정론적 fallback을 구현한다
+- [x] TASK-P0-06 Gemini 클라이언트와 결정론적 fallback을 구현한다
   - Status: DONE
   - Owner: Codex
   - Requirement: FR-05.2, FR-05.3, FR-06.3, FR-07.3, NFR-02, NFR-03
   - File Scope: `backend/src/ai_backend/llm_client.py`, `backend/src/ai_backend/fallback.py`
   - Depends on: TASK-P0-02
   - Acceptance:
-    - Bedrock 호출 코드는 `llm_client.py` 한 곳에만 있어야 한다.
+    - Gemini API 호출 코드는 `llm_client.py` 한 곳에만 있어야 한다.
     - 갈등 시나리오, 협상안, Pact 각각에 대한 결정론적 fallback 템플릿이 존재해야 한다.
     - LLM 호출 실패를 상위 모듈이 fallback으로 처리할 수 있는 형태로 노출해야 한다.
   - Verify:
-    - Bedrock 호출 래퍼 단위 테스트
+    - Gemini API 호출 래퍼 단위 테스트
     - fallback 출력 형식 테스트
     - LLM 예외 발생 시 상위 처리를 위한 예외 테스트
 
@@ -131,7 +131,7 @@
   - Depends on: TASK-P0-06
   - Acceptance:
     - 입력에 갈등 요약과 `preset_id`가 포함되고 호출 조건이 참일 때 `narrative` 문자열과 `source` 필드가 반환되어야 한다.
-    - 호출 조건이 거짓이면 Bedrock 호출 없이 빈 값 또는 skip 상태를 반환해야 한다.
+    - 호출 조건이 거짓이면 Gemini API 호출 없이 빈 값 또는 skip 상태를 반환해야 한다.
     - 갈등 우선순위 판단은 상위 코드 입력을 사용하고 LLM이 결정하지 않아야 한다.
     - LLM 실패 시 `fallback.py`에서 생성한 `narrative` 문자열과 `source: fallback`이 반환되어야 한다.
   - Verify:
@@ -149,7 +149,7 @@
   - Acceptance:
     - `negotiate.py`는 입력 갈등 요약이 있을 때 `suggestions` 문자열 배열과 `source` 필드를 반환해야 한다.
     - `pact.py`는 배정된 두 학생의 규칙 입력이 있을 때 `rules` 문자열 배열과 `source` 필드를 반환해야 한다.
-    - 두 모듈 모두 호출 조건이 거짓이면 Bedrock 호출 없이 빈 값 또는 skip 상태를 반환해야 한다.
+    - 두 모듈 모두 호출 조건이 거짓이면 Gemini API 호출 없이 빈 값 또는 skip 상태를 반환해야 한다.
     - 두 모듈 모두 LLM 실패 시 각각 결정론적 fallback 결과와 `source: fallback`을 반환해야 한다.
   - Verify:
     - 협상안 생성 시 `suggestions` 배열 반환 테스트
@@ -228,6 +228,58 @@
 
 ## P1
 
+- [x] TASK-P1-14 매칭 요청 목록 조회 API와 프론트 후보→채팅 실 API 연결
+  - Status: DONE
+  - Owner: Claude Code
+  - Requirement: FR-01.13, FR-08.14
+  - File Scope: `.kiro/specs/roompact-campus/*`, `backend/src/main_backend/routes/chat.py`, `backend/src/main_backend/services/chat_service.py`, `backend/src/main_backend/services/storage.py`, `backend/tests/main_backend/*`, `docs/api/*`, `frontend/roomonic-nextjs/app/candidates/*`, `frontend/roomonic-nextjs/app/chat/page.js`, `frontend/roomonic-nextjs/lib/mockApi.js`
+  - Depends on: TASK-P1-10, TASK-P1-13
+  - Acceptance:
+    - 메인 백엔드는 `GET /profiles/{profile_id}/match-requests`로 본인이 보냈거나 받은 매칭 요청 전체를 상태와 함께 조회할 수 있어야 한다.
+    - 수락된 요청에는 연결된 채팅방 `room_id`가 함께 반환되어야 한다.
+    - 프론트 후보 선택 화면은 로컬 저장소 시뮬레이션 대신 실제 `POST /profiles/{profile_id}/match-requests`를 호출해야 한다.
+    - 프론트 채팅 목록 화면은 위 목록 조회 API를 사용해야 하며, 요청을 받은 사용자가 수락할 수 있는 버튼을 제공해야 한다.
+    - 수락 후에는 실제 채팅방 생성 API를 거쳐 메시지/WebSocket/룸메이트 확정/Pact 조회가 모두 실제 API 기준으로 동작해야 한다.
+    - 기존 연습 모드(로컬 시뮬레이션)는 유지하되 실제 프로필 흐름과 분리되어야 한다.
+  - Verify:
+    - 매칭 요청 목록 조회 API 테스트
+    - 수락된 요청의 `room_id` 포함 테스트
+    - `npm run build` 통과
+    - 로컬 백엔드 기준 후보→요청→수락→채팅방→확정→Pact 전 과정 수동 검증
+
+- [x] TASK-P1-13 룸메이트 확정 후 Pact 생성을 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.12, FR-07.2, FR-07.2.1, FR-07.4, FR-07.5, FR-07.6, FR-07.7, FR-08.13, FR-10.12, NFR-03.1, NFR-12
+  - File Scope: `.kiro/specs/roompact-campus/*`, `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`, `backend/src/ai_backend/pact.py`, `backend/src/ai_backend/fallback.py`, `backend/src/ai_backend/llm_client.py`, `backend/tests/*`, `deploy/*`, `docs/api/*`
+  - Depends on: TASK-P1-10, TASK-P1-11
+  - Acceptance:
+    - 메인 백엔드는 룸메이트 확정 이후 Pact 생성 로직을 실행할 수 있어야 한다.
+    - Pact 생성은 두 사람의 인터뷰 응답 차이와 Hardcut 조건을 비교해 충돌 가능성이 높은 항목 상위 3~5개만 약속 후보로 선택해야 한다.
+    - 무엇을 약속으로 만들지는 코드가 결정하고, LLM은 문장 다듬기만 담당해야 한다.
+    - Gemini API 호출 실패 시 fallback 결과가 반환되어야 한다.
+    - 생성 결과는 저장 및 재조회 가능한 구조여야 한다.
+  - Verify:
+    - 확정 조합 Pact 생성 테스트
+    - 충돌 항목 우선순위 산출 테스트
+    - Gemini API 실패 fallback 테스트
+    - Pact 조회 API 또는 저장 구조 확인 테스트
+
+- [x] TASK-P1-12 Hardcut 추천 제외 규칙을 매칭 점수 계산에 반영한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.5.1, FR-02.2.1, FR-04.4
+  - File Scope: `backend/src/ai_backend/scoring.py`, `backend/tests/ai_backend/*`, `backend/tests/main_backend/*`, `docs/api/*`
+  - Depends on: TASK-P0-12, TASK-P0-14
+  - Acceptance:
+    - 저장된 `hardcut_conditions`가 추천 후보 계산 시 제외 조건으로 반영되어야 한다.
+    - Hardcut 충돌이 발생한 쌍은 `eligible = false`로 처리되어 추천 목록에 포함되지 않아야 한다.
+    - 프론트가 이해할 수 있는 충돌 요약 문구가 반환되어야 한다.
+  - Verify:
+    - Hardcut 충돌 페어 점수 계산 테스트
+    - 추천 후보 제외 테스트
+    - API 문서 갱신 확인
+
 - [ ] TASK-P1-01 저장 시 lint와 test를 실행하는 Hook을 추가한다
   - Status: READY
   - Owner: unassigned
@@ -249,7 +301,7 @@
   - File Scope: `.kiro/hooks/*`
   - Depends on: TASK-P0-04, TASK-P0-05
   - Acceptance:
-    - `scoring.py`와 `matching.py`에 Bedrock 또는 네트워크 호출 관련 import가 있을 때 Hook이 실패해야 한다.
+    - `scoring.py`와 `matching.py`에 Gemini API 또는 네트워크 호출 관련 import가 있을 때 Hook이 실패해야 한다.
     - 허용되지 않는 import가 없으면 Hook이 통과해야 한다.
     - 이 Hook 외 추가 Hook을 만들지 않아야 한다.
   - Verify:
@@ -420,8 +472,13 @@
 
 ## 검토 코멘트
 
+- Self Review: 2026-08-28 기준 룸메이트 확정 이후 충돌 가능 항목 기반 약속 생성 구조를 정리했고, 이를 위한 후속 Task를 `TASK-P1-13`으로 추가했다.
+- Self Review: TASK-P1-13 완료. 룸메이트 확정 API, 충돌 가능 항목 기반 약속 생성 로직, PostgreSQL 저장 구조를 추가했다.
+- Self Review: TASK-P1-13 남은 작업 처리. `rules/review` 화면이 목업 대신 실제 Pact(`rules`/`conflict_topics`)를 사용하도록 `mockApi.js`를 정리하고, `docs/api/main-backend-openapi.json`을 실제 FastAPI 스키마로 재생성했다.
+- Self Review: TASK-P1-14 완료. 후보 선택→채팅→룸메이트 확정 흐름이 로컬 `localStorage` 시뮬레이션(가짜 2.5초 자동수락, 하드코딩된 Pact)으로 동작하던 걸 발견하고, `GET /profiles/{profile_id}/match-requests` 목록 API를 추가해 프론트 후보 선택/채팅 목록/수락 흐름을 실제 매칭 요청·채팅방·룸메이트 확정 API로 연결했다. 연습 모드(`practice`)는 기존 로컬 시뮬레이션을 그대로 유지한다.
+
 - Self Review: TASK-P0-01 완료. 일반 백엔드 FastAPI 골격, 기본 세션 API, 헬스체크, 로컬 테스트 통과.
-- Self Review: TASK-P0-02~10 완료. AI 백엔드 FastAPI 진입점, 결정론적 scoring/matching, Bedrock 경계, fallback, 공용 저장소, 메인-투-AI 연결, 통합 테스트를 모두 구현했다.
+- Self Review: TASK-P0-02~10 완료. AI 백엔드 FastAPI 진입점, 결정론적 scoring/matching, Gemini API 경계, fallback, 공용 저장소, 메인-투-AI 연결, 통합 테스트를 모두 구현했다.
 - Self Review: TASK-P0-11 완료. 메인 백엔드 프로필 생성/목록/조회 API와 프론트 공유 문서를 추가했다.
 - Self Review: TASK-P0-12 완료. 프로필별 생활 인터뷰 저장/조회 API와 조건부 필드 검증, 프론트 공유 문서를 추가했다.
 - Self Review: TASK-P0-13 완료. 인터뷰 응답 기반 캐릭터 분류 로직과 API 응답 캐릭터 블록을 추가했다.

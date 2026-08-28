@@ -24,6 +24,112 @@
 
 ## 기록
 
+### 2026-08-28 — TASK-P1-14
+
+- **Agent**: Claude Code
+- **Task**: TASK-P1-14 매칭 요청 목록 조회 API 추가 및 프론트 후보→채팅→룸메이트 확정 흐름을 로컬 시뮬레이션에서 실제 API 연결로 전환
+- **배경**: 사용자가 "만든 API 통신들과 연결되게 작업을 했어?"라고 물어 전수 점검한 결과, `candidates` 화면에서 후보를 선택하면 `requestChatMatch()`가 `POST /profiles/{id}/match-requests`를 전혀 호출하지 않고 `localStorage`에 가짜 대화를 만들어 2.5초 뒤 스스로 "수락됨"으로 바꾸는 구조였음을 확인했다. 이 가짜 `room_id`(`local-room-...`)가 이후 메시지 조회·룸메이트 확정까지 전부 로컬 분기를 타게 만들어, 실제 인터뷰 차이를 반영한 백엔드 Pact 대신 하드코딩된 가짜 Pact가 노출되고 있었다. 원인은 백엔드에 "내 매칭 요청 목록 조회" API가 없어 상대방이 요청을 확인/수락할 방법 자체가 없었기 때문이었다. 아키텍처 변경이 필요한 사안이라 `requirements.md`(FR-01.13, FR-08.14)와 `design.md`(채팅 설계 하위에 "매칭 요청 목록 조회 및 프론트 연결" 절 추가)를 먼저 갱신하고 `TASK-P1-14`를 정식으로 추가한 뒤 구현했다.
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/main_backend/services/storage.py` (`list_match_requests_for_profile` — Local/DynamoDB/Postgres 3개 백엔드 모두 구현)
+  - `backend/src/main_backend/services/chat_service.py` (`list_match_requests` — peer 요약 및 `room_id` 포함)
+  - `backend/src/main_backend/routes/chat.py` (`GET /profiles/{profile_id}/match-requests`)
+  - `backend/tests/main_backend/test_chat.py`
+  - `docs/api/main-backend.md`, `docs/api/main-backend-openapi.json`
+  - `frontend/roomonic-nextjs/lib/mockApi.js` (`getChatInbox`, `requestChatMatch`를 실제 API 기준으로 재작성, `acceptMatchRequest` 추가, `mapMatchRequestToInboxItem` 매핑 헬퍼 추가)
+  - `frontend/roomonic-nextjs/app/chat/page.js` (받은 요청 수락 버튼 추가, 목록/네비게이션을 현재 프로필 기준으로 수정)
+  - `frontend/roomonic-nextjs/app/candidates/[id]/page.js` (미연결 상태였던 `createChatRoom` 직접 호출을 실제 매칭 요청 흐름으로 교체 — 이 페이지는 어디서도 링크되지 않은 상태였음)
+- **테스트 결과**: PASS — `pytest backend/tests` 38건, `ruff check src tests`, 로컬 백엔드(임시 포트, 로컬 JSON 저장소, 운영 DB 미접근)에서 curl로 프로필 A/B 생성 → 매칭 요청 → B 시점 목록 조회(`pending`, `room_id: null`) → 수락 → A 시점 목록 조회(`accepted`, 실제 `room_id` 포함) → `does-not-exist` 프로필 404 확인. `npm run build` 통과.
+- **남은 작업**:
+  - 실제 두 사용자(두 브라우저/기기)로 후보 선택→요청→수락→채팅→룸메이트 확정까지의 클릭 흐름은 미검증 — `.env.local`이 운영 EC2를 가리키고 있어 운영 데이터를 건드리지 않기 위해 API 레벨 검증으로 대체함.
+  - 운영 EC2 PostgreSQL에는 아직 이번 변경이 반영되지 않음 — 재배포 필요 (스키마 변경은 없음, 코드만 배포하면 됨).
+  - "연습 모드"(`seedPracticeData`)는 의도적으로 그대로 두었다 — 로그인 없이 데모를 보여주는 용도이므로 실제 사용자 흐름과는 분리 유지.
+- **비고**: 이번 건은 "API를 만들었다"와 "프론트가 그 API를 실제로 호출한다"가 다르다는 걸 보여주는 사례였다. 앞으로 새 백엔드 엔드포인트를 추가할 때는 프론트의 어느 화면이 그 엔드포인트를 실제로 호출하는지까지 함께 확인하는 게 좋겠다.
+
+### 2026-08-28 — TASK-P1-13 후속 (프론트 약속 화면 정리)
+
+- **Agent**: Claude Code
+- **Task**: TASK-P1-13 남은 작업 중 "약속 화면에서 conflict_topics와 rules 노출 방식 정리" 처리
+- **변경 파일**:
+  - `docs/api/main-backend-openapi.json` (`backend/scripts/export_openapi.py`로 재생성해 실제 스키마와 동기화, `ValidationError.input`/`ctx` 필드 누락분 반영)
+  - `frontend/roomonic-nextjs/lib/mockApi.js` (`getRulesReview`가 `getRulesDraft`와 동일하게 실제 `/chat-rooms/{room_id}/pact` 결과를 사용하도록 연결. 기존에는 `RULES_REVIEW` 목업 고정값만 반환해 확정 화면(초안)과 검토 화면의 약속 내용이 서로 달랐음)
+- **테스트 결과**: PASS — 로컬 백엔드(임시 포트 8123, `ROOMPACT_STORAGE_BACKEND` 미설정으로 로컬 JSON 저장소 사용, 운영 DB 미접근)에서 프로필 생성→인터뷰 저장→매칭 요청/수락→채팅방 생성→룸메이트 상호 확정→`GET /pact` 전 과정을 curl로 재현해 `rules`/`conflict_topics` 응답 구조 확인. `npm run build` 통과. `pytest backend/tests/main_backend/test_chat.py` 6건 통과.
+- **남은 작업**:
+  - 실제 브라우저(Chat → 확정 → `/rules/draft` → `/rules/review`) 클릭 흐름은 미검증 — 로컬 `.env.local`의 `NEXT_PUBLIC_API_BASE_URL`이 운영 EC2를 가리키고 있어, 운영 데이터를 건드리지 않기 위해 API 레벨 검증으로 대체함. 로컬 백엔드로 브라우저 E2E를 하려면 `NEXT_PUBLIC_API_BASE_URL`을 임시로 로컬 주소로 바꿔서 확인 필요.
+  - `rules/review` 화면의 개별 규칙 동의/수정요청 상태(`agreed`/`revise`/`pending`)는 백엔드에 저장되는 상태가 아니라 프론트 표시용 기본값(`pending`)만 채움 — 실제 개별 동의 상태를 서버에 남기려면 별도 API/Task 필요 (Spec에 없는 범위라 이번에는 추가하지 않음).
+- **비고**: `next lint`는 이 프로젝트에 ESLint 설정이 아직 없어(대화형 초기 설정 프롬프트만 뜸) 실행하지 못함 — 별도 Task로 처리 필요.
+
+### 2026-08-28 — TASK-P1-13
+
+- **Agent**: Codex
+- **Task**: TASK-P1-13 룸메이트 확정 후 Pact 생성 추가
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/.env.example`
+  - `backend/scripts/export_openapi.py`
+  - `backend/src/ai_backend/pact.py`
+  - `backend/src/main_backend/routes/chat.py`
+  - `backend/src/main_backend/services/chat_service.py`
+  - `backend/src/main_backend/services/storage.py`
+  - `backend/tests/main_backend/test_chat.py`
+  - `backend/tests/main_backend/test_profiles.py`
+  - `deploy/postgres/schema.sql`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+  - `frontend/roomonic-nextjs/lib/mockApi.js`
+- **테스트 결과**: PASS — `.\.venv\Scripts\python.exe -m pytest backend/tests/main_backend/test_chat.py`, `.\.venv\Scripts\python.exe -m ruff check backend/src backend/tests`, `powershell -ExecutionPolicy Bypass -File .\backend\scripts\verify.ps1`, `.\.venv\Scripts\python.exe backend/scripts/export_openapi.py`
+- **남은 작업**:
+  - EC2 운영 환경에서 룸메이트 확정 후 약속 생성 응답 확인
+  - 약속 화면에서 `conflict_topics`와 `rules` 노출 방식 정리
+- **비고**: 메인 백엔드는 룸메이트 확정 시 내부 Pact 생성 로직을 실행하고, Gemini API 호출 실패 시 fallback 생성으로 약속 응답을 유지한다.
+
+### 2026-08-28 — Pact 생성 설계 반영
+
+- **Agent**: Codex
+- **Task**: 룸메이트 확정 후 충돌 가능 항목 기반 약속 생성 아키텍처와 후속 Task 정의
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+- **테스트 결과**: N/A — Spec 문서 정리 작업
+- **남은 작업**:
+  - `TASK-P1-13` 구현
+  - Pact 생성/조회 API 구체화
+- **비고**: 약속 생성은 공통 규칙 나열이 아니라, 두 사람 인터뷰 차이와 Hardcut 조건을 비교해 실제 충돌 가능성이 높은 항목만 3~5개 추리는 구조로 정리함.
+
+### 2026-08-28 — Hardcut 매칭 제외 반영
+
+- **Agent**: Codex
+- **Task**: 인터뷰의 `hardcut_conditions`를 추천/매칭 제외 규칙으로 반영
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/ai_backend/scoring.py`
+  - `backend/tests/ai_backend/test_ai_backend.py`
+  - `backend/tests/main_backend/test_profiles.py`
+  - `docs/api/main-backend.md`
+- **테스트 결과**: PASS — `.venv\Scripts\python.exe -m pytest tests/ai_backend/test_ai_backend.py`, `.venv\Scripts\python.exe -m pytest tests/main_backend/test_profiles.py`
+- **남은 작업**:
+  - `반려동물 필수`, `주야간 근무 불일치` 같은 일부 Hardcut은 현재 인터뷰 필드 기반의 근사 규칙이라 전용 질문 추가 여부를 추후 검토
+- **비고**: Hardcut 충돌이 감지되면 점수와 무관하게 `eligible = false`로 처리되어 추천 목록에서 제외된다.
+
+### 2026-08-28 — 인터뷰 API hardcut 반영
+
+- **Agent**: Codex
+- **Task**: 프로필 인터뷰 저장/조회 API에 `hardcut_conditions` 필드 추가 및 최대 3개 검증 반영
+- **변경 파일**:
+  - `backend/src/main_backend/routes/profiles.py`
+  - `backend/tests/main_backend/test_profiles.py`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+- **테스트 결과**: PASS — `.venv\Scripts\python.exe -m pytest tests/main_backend/test_profiles.py`, `.venv\Scripts\python.exe scripts/export_openapi.py`
+- **남은 작업**:
+  - 추천 제외 로직에 `hardcut_conditions`를 어떻게 연결할지 별도 규칙 정의
+- **비고**: 프론트는 인터뷰 최종 제출 payload에 `hardcut_conditions: string[]`를 포함해 최대 3개까지 보낼 수 있다.
+
 ### 2026-08-28 — TASK-P1-11
 
 - **Agent**: Codex
@@ -191,7 +297,7 @@
   - `scripts/deploy-ec2.sh`
 - **테스트 결과**: PASS — `backend/scripts/verify.ps1`, `bash -n scripts/deploy-ec2.sh`, `bash -n scripts/install-postgres.sh`, EC2 재배포 후 공개 API 저장 확인
 - **남은 작업**:
-  - Bedrock 실사용 모델 ID 주입
+  - Gemini 실사용 API 키와 모델 설정 확인
 - **비고**: 운영 저장소를 EC2 내부 PostgreSQL로 전환하고, 로컬 JSON은 개발 fallback으로 유지함.
 
 ### 2026-08-27 — EC2-CONFIG

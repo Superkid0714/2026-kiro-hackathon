@@ -17,10 +17,11 @@
 - 매칭 결과 조회
 - 프로필별 생활 인터뷰 저장 및 조회
 - 프로필별 캐릭터 유형 산출
-- 추천 후보 간 대화 요청 생성 및 수락
+- 추천 후보 간 대화 요청 생성, 조회 및 수락
 - 상호 수락 완료 후 1:1 채팅방 생성
 - 채팅방 메시지 이력 조회
 - WebSocket 실시간 채팅
+- 룸메이트 확정과 약속 조회
 - 카카오 로그인 코드 교환
 - 현재 로그인 사용자 조회
 - AI 백엔드 오류를 프론트가 처리 가능한 구조로 전달
@@ -37,10 +38,13 @@
 - 추천 후보 확인은 `GET /api/profiles/{profile_id}/recommendations`로 한다.
 - 저장된 인터뷰를 다시 불러와야 할 때는 `GET /api/profiles/{profile_id}/interview`를 사용한다.
 - 추천 후보와 대화를 시작할 때는 먼저 `POST /api/profiles/{profile_id}/match-requests`로 대화 요청을 만든다.
-- 상대가 요청을 수락하면 `POST /api/match-requests/{request_id}/accept` 응답이 `accepted`가 된다.
+- 채팅 목록(수신함) 화면은 `GET /api/profiles/{profile_id}/match-requests`로 내가 보냈거나 받은 요청 전체를 조회한다.
+- 요청을 받은 쪽은 `POST /api/match-requests/{request_id}/accept`로 수락하고, 이때 응답이 `accepted`가 된다.
 - 그 다음 `POST /api/profiles/{profile_id}/chat-rooms`로 채팅방을 확보한다.
 - 기존 메시지 이력은 `GET /api/chat-rooms/{room_id}/messages`로 조회한다.
 - 실시간 메시지는 `ws://15.134.137.117/api/ws/chat-rooms/{room_id}`로 연결한다.
+- 채팅 중 최종 룸메이트를 확정할 때는 `POST /api/chat-rooms/{room_id}/roommate-confirmation`을 호출한다.
+- 생성된 약속은 `GET /api/chat-rooms/{room_id}/pact?profile_id={profile_id}`로 조회한다.
 - 카카오 로그인은 프론트 콜백 경로 `/auth/kakao/callback`에서 `code`를 받은 뒤 `POST /api/auth/kakao/exchange`를 호출해 완료한다.
 
 ## 현재 구현된 엔드포인트
@@ -267,39 +271,54 @@
 
 ### `PUT /profiles/{profile_id}/interview`
 
-- 용도: 프로필별 생활 인터뷰 응답 저장
-- 공개 호출 예시: `PUT /api/profiles/{profile_id}/interview`
-- 프론트 저장 방식: 여러 화면에서 받은 답변을 프론트에서 합친 뒤 `한 번에 저장`
-- 기능명세:
-  - 프로필 1건에 대한 생활 인터뷰 전체 응답을 저장한다.
-  - 인터뷰는 부분 저장이 아니라 최종 제출 기준으로 전체 payload를 받는다.
-  - 흡연/반려동물 관련 조건부 필드는 응답 값에 따라 필수 여부가 달라진다.
-  - 저장 시 규칙성 점수와 공유성 점수를 계산하고 `ROO`, `DUDI`, `PEE`, `MOMO` 중 하나의 캐릭터 유형을 산출한다.
-  - 저장 완료 후 현재 인터뷰 제출자 전체를 기준으로 추천 후보를 자동 갱신한다.
-- Path Variable:
+- 기능명세
 
-| Key | Type | 비고 |
+- 프로필 1건에 대한 생활 인터뷰 전체 응답을 저장한다.
+- 프론트에서 여러 UI 화면으로 나눠 받은 답변을 마지막에 하나로 합쳐 한 번에 저장한다.
+- 부분 저장이 아니라 `최종 인터뷰 전체 payload` 저장 기준이다.
+- 흡연/반려동물 관련 문항은 조건부 입력값을 검증한다.
+- `hardcut_conditions`는 "양보할 수 없는 조건"을 최대 3개까지 저장한다.
+- 저장 시 규칙성 점수와 공유성 점수를 계산하고 캐릭터 유형을 함께 산출한다.
+- 저장 완료 후 현재 인터뷰 제출자 전체를 기준으로 추천 후보를 자동 갱신한다.
+
+## Variable
+
+### Path Variable
+
+| Key | Type | 비고(예시, 값 설명 등) |
 | --- | --- | --- |
-| profile_id | String | `POST /api/profiles` 응답으로 받은 프로필 ID |
+| profile_id | String | `POST /api/profiles`로 생성한 프로필 ID |
 
-- Request Body 필드:
+### Query String
 
-| Key | Type | 비고 |
+```text
+없음
+```
+
+## Request Header
+
+| Key | Value | 비고 |
 | --- | --- | --- |
-| wake_up_time | String | 기상 시간, `HH:MM`, 10분 단위 |
-| sleep_time | String | 취침 시간, `HH:MM`, 10분 단위 |
+| Content-Type | application/json | JSON 요청 |
+
+## Request Body
+
+| Key | Type | 비고(예시, 값 설명 등) |
+| --- | --- | --- |
+| wake_up_time | String | 기상 시간, `HH:MM`, 10분 간격 |
+| sleep_time | String | 취침 시간, `HH:MM`, 10분 간격 |
 | noise_sensitive | Boolean | 생활 소음 민감 여부 |
-| quiet_hours_start | String | 조용했으면 하는 시작 시간, `HH:MM`, 10분 단위 |
+| quiet_hours_start | String | 조용했으면 하는 시작 시간, `HH:MM`, 10분 간격 |
 | cleaning_frequency | String | `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
 | dishes_deadline | String | `바로`, `그날 이내에`, `다음날 아침` |
-| guest_frequency | String | 지인 초대 허용 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| guest_frequency | String | `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
 | smokes | Boolean | 흡연 여부 |
-| smoking_type | String or null | 흡연 시 담배 종류, `smokes=true`일 때 필수 |
+| smoking_type | String or null | 담배 종류, `smokes=true`일 때 필수 |
 | smoking_place | String or null | `밖`, `베란다`, `집 안`, `smokes=true`일 때 필수 |
-| drinking_frequency | String | 음주 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
-| home_stay_frequency | String | 집에 머무는 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| drinking_frequency | String | `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| home_stay_frequency | String | `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
 | meal_preference | String | `배달`, `직접` |
-| home_activity_frequency | String | 게임/공부/재택 빈도, `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
+| home_activity_frequency | String | `1`, `2`, `3`, `4`, `5`, `6`, `매일` |
 | supplies_sharing | String | `공동구매`, `각자`, `일부 공유` |
 | summer_temperature | Number | 여름 선호 실내 온도 |
 | winter_temperature | Number | 겨울 선호 실내 온도 |
@@ -311,8 +330,9 @@
 | personal_space_ratio | String | `반반`, `필요한 만큼` |
 | security_preference | String | `항시 잠금`, `외출시`, `상관없음` |
 | absence_notice | String | `항상`, `하루 이상`, `필요 없음` |
+| hardcut_conditions | Array[String] | 양보할 수 없는 조건 최대 3개 |
 
-- UI 질문 매핑:
+### UI 질문 매핑
 
 | 질문 번호 | 프론트 질문 | 저장 필드 |
 | --- | --- | --- |
@@ -324,8 +344,8 @@
 | 6 | 공용 물건 정리와 설거지는 언제 끝내야 하나요? | `dishes_deadline` |
 | 7 | 지인을 집에 초대하는 건 주에 몇 번까지 괜찮은가요? | `guest_frequency` |
 | 8 | 담배를 피우나요? | `smokes` |
-| 8-1 | 담배 종류? | `smoking_type` |
-| 8-2 | 어디서 피우는 게 좋은가요? | `smoking_place` |
+| 8-1 | 담배 종류 | `smoking_type` |
+| 8-2 | 담배를 피울 경우, 어디서 피우는 게 좋은가요? | `smoking_place` |
 | 9 | 술을 자주 마시나요? | `drinking_frequency` |
 | 10 | 주에 집에 얼마나 머무나요? | `home_stay_frequency` |
 | 11 | 배달음식 혹은 직접 요리 중 어떤 걸 선호하나요? | `meal_preference` |
@@ -341,8 +361,9 @@
 | 20 | 개인 공간 비율은 어떻게 나누는 게 낫나요? | `personal_space_ratio` |
 | 21 | 방문과 창문은 얼마나 철저하게 관리했으면 하나요? | `security_preference` |
 | 22 | 집을 장시간 비울 경우, 사전에 알려주는 게 필요한가요? | `absence_notice` |
+| Hardcut | 양보할 수 없는 질문/조건 최대 3개 선택 | `hardcut_conditions` |
 
-- 요청:
+### 예시
 
 ```json
 {
@@ -368,11 +389,31 @@
   "personal_space_access": "노크 혹은 허락",
   "personal_space_ratio": "반반",
   "security_preference": "외출시",
-  "absence_notice": "하루 이상"
+  "absence_notice": "하루 이상",
+  "hardcut_conditions": ["실내 흡연", "반려동물 필수", "잦은 손님 방문"]
 }
 ```
 
-- 성공 응답:
+---
+
+## Response Body
+
+| Key | Type | 비고(예시, 값 설명 등) |
+| --- | --- | --- |
+| status | String | `saved` |
+| profile_id | String | 프로필 ID |
+| interview | Object | 저장된 인터뷰 전체 응답 |
+| character | Object | 인터뷰 기반 캐릭터 분류 결과 |
+| character.rule_score | Number | 규칙성 점수 |
+| character.sharing_score | Number | 공유성 점수 |
+| character.type_code | String | `ROO`, `DUDI`, `PEE`, `MOMO` |
+| character.type_name | String | `함께둥글형`, `함께정돈형`, `규칙중시형`, `자유독립형` |
+| character.top_factors | Array[String] | 유형 분류의 주요 근거 문장 |
+| recommendations | Array[Object] | 저장 직후 기준 추천 후보 목록 |
+| recommended_at | String | 추천 후보 갱신 시각 |
+| updated_at | String | 저장 시각 |
+
+### 예시
 
 ```json
 {
@@ -403,7 +444,8 @@
     "personal_space_access": "노크 혹은 허락",
     "personal_space_ratio": "반반",
     "security_preference": "외출시",
-    "absence_notice": "하루 이상"
+    "absence_notice": "하루 이상",
+    "hardcut_conditions": ["실내 흡연", "반려동물 필수", "잦은 손님 방문"]
   },
   "character": {
     "rule_score": 71.0,
@@ -422,25 +464,72 @@
 }
 ```
 
-- 비고:
+### 실제 주소
+
+```text
+PUT http://15.134.137.117/api/profiles/{profile_id}/interview
+```
+
+- 비고
   - 시간 입력은 `HH:MM` 24시간 형식이며 `10분` 단위만 허용한다.
-  - `smokes: true`이면 `smoking_type`, `smoking_place`가 필요하다.
-  - `pet_ok: true`이면 `pet_preference`가 필요하다.
-  - 프론트는 여러 화면에서 받은 응답을 합쳐서 최종적으로 이 요청 본문 전체를 보낸다.
-  - 캐릭터 유형 매핑:
-    - `ROO`: 함께둥글형
-    - `DUDI`: 함께정돈형
-    - `PEE`: 규칙중시형
-    - `MOMO`: 자유독립형
+  - `smokes: true`이면 `smoking_type`, `smoking_place`가 필수다.
+  - `pet_ok: true`이면 `pet_preference`가 필수다.
+  - `hardcut_conditions`는 비워둘 수 있지만, 보내는 경우 최대 3개까지만 허용한다.
+  - 프론트는 여러 화면에서 받은 응답을 합쳐 최종적으로 이 요청 본문 전체를 한 번에 보낸다.
 
 ### `GET /profiles/{profile_id}/interview`
 
-- 용도: 프로필별 생활 인터뷰 응답 조회
-- 공개 호출 예시: `GET /api/profiles/{profile_id}/interview`
-- 기능명세:
-  - 저장된 인터뷰 전체 응답을 반환한다.
-  - 수정 화면 진입, 제출 확인 화면, 이어서 작성 기능에 사용할 수 있다.
-- 성공 응답:
+- 기능명세
+
+- 저장된 인터뷰 전체 응답을 조회한다.
+- 수정 화면 재진입, 제출 확인, 이어쓰기 화면에서 사용할 수 있다.
+- `hardcut_conditions`도 함께 반환한다.
+
+## Variable
+
+### Path Variable
+
+| Key | Type | 비고(예시, 값 설명 등) |
+| --- | --- | --- |
+| profile_id | String | 프로필 ID |
+
+### Query String
+
+```text
+없음
+```
+
+## Request Header
+
+| Key | Value | 비고 |
+| --- | --- | --- |
+| 없음 |  |  |
+
+## Request Body
+
+| Key | Value | 비고(예시, 값 설명 등) |
+| --- | --- | --- |
+| 없음 |  |  |
+
+### 예시
+
+```json
+{}
+```
+
+---
+
+## Response Body
+
+| Key | Type | 비고(예시, 값 설명 등) |
+| --- | --- | --- |
+| status | String | `ok` |
+| profile_id | String | 프로필 ID |
+| interview | Object | 저장된 인터뷰 전체 응답 |
+| character | Object | 인터뷰 기반 캐릭터 분류 결과 |
+| updated_at | String | 마지막 저장 시각 |
+
+### 예시
 
 ```json
 {
@@ -471,7 +560,8 @@
     "personal_space_access": "노크 혹은 허락",
     "personal_space_ratio": "반반",
     "security_preference": "외출시",
-    "absence_notice": "하루 이상"
+    "absence_notice": "하루 이상",
+    "hardcut_conditions": ["실내 흡연", "반려동물 필수", "잦은 손님 방문"]
   },
   "character": {
     "rule_score": 71.0,
@@ -488,7 +578,13 @@
 }
 ```
 
-- 실패 응답:
+### 실제 주소
+
+```text
+GET http://15.134.137.117/api/profiles/{profile_id}/interview
+```
+
+- 실패 응답
 
 ```json
 {
@@ -504,6 +600,7 @@
   - 인터뷰 제출이 완료된 프로필의 추천 후보를 조회한다.
   - 새 사용자가 들어오거나 기존 사용자가 인터뷰를 수정하면 추천 목록이 자동 갱신된다.
   - 추천 후보는 `70점 이상`인 경우만 유지하며, 지역이 다르면 큰 감점이 반영된다.
+  - Hardcut 조건과 충돌하는 후보는 점수가 높아도 추천 목록에서 제외된다.
   - 추천은 확정 배정이 아니라 현재 시점의 후보 제안이다.
 - 성공 응답:
 
@@ -589,6 +686,57 @@
     "created_at": "2026-08-28T09:15:00+00:00",
     "updated_at": "2026-08-28T09:15:00+00:00"
   }
+}
+```
+
+### `GET /profiles/{profile_id}/match-requests`
+
+- 용도: 내가 보냈거나 받은 대화 요청 전체 조회
+- 공개 호출 예시: `GET /api/profiles/{profile_id}/match-requests`
+- 기능명세:
+  - 해당 프로필이 요청자 또는 대상인 매칭 요청을 모두 반환한다.
+  - 각 항목에 상대 프로필 요약(`peer_profile_id`, `peer_nickname`, `peer_region`)이 포함된다.
+  - `status`가 `accepted`인 항목에는 연결된 채팅방 `room_id`가 함께 포함된다. 아직 채팅방이 만들어지지 않았다면 `null`이다.
+  - 채팅 목록(수신함) 화면은 이 API를 데이터 소스로 사용한다. 프론트는 후보 선택 단계에서 로컬 저장소로 대화 요청/수락을 흉내내지 않는다.
+- Path Variable:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| profile_id | String | 조회 기준 프로필 ID |
+
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "match_requests": [
+    {
+      "request_id": "match-9b21f4cd10",
+      "participant_a_profile_id": "profile-a1b2c3d4",
+      "participant_b_profile_id": "profile-b2c3d4e5",
+      "requester_profile_id": "profile-a1b2c3d4",
+      "target_profile_id": "profile-b2c3d4e5",
+      "status": "accepted",
+      "requester_accepted": true,
+      "target_accepted": true,
+      "accepted_by_profile_id": "profile-b2c3d4e5",
+      "accepted_at": "2026-08-28T09:18:00+00:00",
+      "created_at": "2026-08-28T09:15:00+00:00",
+      "updated_at": "2026-08-28T09:18:00+00:00",
+      "peer_profile_id": "profile-b2c3d4e5",
+      "peer_nickname": "서연",
+      "peer_region": "광주광역시",
+      "room_id": "room-9b21f4cd10"
+    }
+  ]
+}
+```
+
+- 실패 응답: 존재하지 않는 `profile_id`면 `404`
+
+```json
+{
+  "detail": "profile_not_found"
 }
 ```
 
@@ -813,6 +961,128 @@ ws://15.134.137.117/api/ws/chat-rooms/{room_id}?profile_id={profile_id}&nickname
     "sender_nickname": "민수",
     "text": "생활수칙 같이 정해볼까요?",
     "sent_at": "2026-08-28T09:22:00+00:00"
+  }
+}
+```
+
+### `POST /chat-rooms/{room_id}/roommate-confirmation`
+
+- 용도: 채팅 중 최종 룸메이트 확정과 약속 생성
+- 공개 호출 예시: `POST /api/chat-rooms/{room_id}/roommate-confirmation`
+- 기능명세:
+  - 채팅 참가자 각자가 현재 대화 상대를 룸메이트로 확정할 수 있다.
+  - 첫 번째 확정 요청 시에는 `pending` 상태만 저장하고 상대방의 확정을 기다린다.
+  - 두 번째 참가자까지 확정하면 메인 백엔드는 두 사람의 인터뷰 응답과 캐릭터 결과를 모아 내부 Pact 생성 로직을 실행한다.
+  - 내부 로직은 충돌 가능성이 높은 항목만 추려 약속을 생성한다.
+  - Gemini API 호출이 실패해도 fallback 생성으로 응답을 유지한다.
+
+- Request Body:
+
+```json
+{
+  "profile_id": "profile-a1b2c3d4"
+}
+```
+
+- 성공 응답 1: 첫 번째 사용자가 먼저 확정한 경우
+
+```json
+{
+  "status": "pending",
+  "room": {
+    "room_id": "room-9b21f4cd10",
+    "roommate_confirmation": {
+      "status": "pending",
+      "requested_by_profile_id": "profile-a1b2c3d4",
+      "pending_for_profile_id": "profile-b2c3d4e5",
+      "participant_a_confirmed_at": "2026-08-28T10:18:00+00:00",
+      "participant_b_confirmed_at": null,
+      "confirmed_profile_ids": [
+        "profile-a1b2c3d4"
+      ],
+      "confirmed_at": null
+    }
+  }
+}
+```
+
+- 성공 응답 2: 두 번째 사용자까지 확정되어 약속이 생성된 경우
+
+```json
+{
+  "status": "confirmed",
+  "room": {
+    "room_id": "room-9b21f4cd10",
+    "roommate_confirmation": {
+      "status": "confirmed",
+      "requested_by_profile_id": "profile-b2c3d4e5",
+      "pending_for_profile_id": null,
+      "participant_a_confirmed_at": "2026-08-28T10:18:00+00:00",
+      "participant_b_confirmed_at": "2026-08-28T10:20:00+00:00",
+      "confirmed_profile_ids": [
+        "profile-a1b2c3d4",
+        "profile-b2c3d4e5"
+      ],
+      "confirmed_at": "2026-08-28T10:20:00+00:00"
+    }
+  },
+  "pact": {
+    "room_id": "room-9b21f4cd10",
+    "participant_a_profile_id": "profile-a1b2c3d4",
+    "participant_b_profile_id": "profile-b2c3d4e5",
+    "rules": [
+      "민수 & 서연는 지인 초대가 필요하면 최소 하루 전에 서로에게 먼저 공유한다.",
+      "민수 & 서연는 서로의 방이나 개인 공간에 들어갈 때 먼저 노크하거나 허락을 구한다.",
+      "민수 & 서연는 공용 물건 정리와 설거지를 늦어도 당일 안에 끝낸다."
+    ],
+    "source": "fallback",
+    "conflict_topics": [
+      {
+        "code": "guest_frequency",
+        "label": "방문객 허용 빈도",
+        "severity": 93,
+        "reason": "손님 방문 허용 범위 차이가 커서 사전 합의가 없으면 바로 갈등으로 이어질 수 있어요.",
+        "draft_rule": "민수 & 서연는 지인 초대가 필요하면 최소 하루 전에 서로에게 먼저 공유한다."
+      }
+    ],
+    "generated_at": "2026-08-28T10:20:00+00:00",
+    "updated_at": "2026-08-28T10:20:00+00:00"
+  }
+}
+```
+
+### `GET /chat-rooms/{room_id}/pact`
+
+- 용도: 확정된 룸메이트 조합의 약속 재조회
+- 공개 호출 예시: `GET /api/chat-rooms/{room_id}/pact?profile_id={profile_id}`
+- 기능명세:
+  - 이미 생성된 약속을 다시 불러온다.
+  - 채팅 재진입, 약속 화면 진입, 확정 이후 재조회에 사용할 수 있다.
+
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "pact": {
+    "room_id": "room-9b21f4cd10",
+    "participant_a_profile_id": "profile-a1b2c3d4",
+    "participant_b_profile_id": "profile-b2c3d4e5",
+    "rules": [
+      "민수 & 서연는 지인 초대가 필요하면 최소 하루 전에 서로에게 먼저 공유한다."
+    ],
+    "source": "fallback",
+    "conflict_topics": [
+      {
+        "code": "guest_frequency",
+        "label": "방문객 허용 빈도",
+        "severity": 93,
+        "reason": "손님 방문 허용 범위 차이가 커서 사전 합의가 없으면 바로 갈등으로 이어질 수 있어요.",
+        "draft_rule": "민수 & 서연는 지인 초대가 필요하면 최소 하루 전에 서로에게 먼저 공유한다."
+      }
+    ],
+    "generated_at": "2026-08-28T10:20:00+00:00",
+    "updated_at": "2026-08-28T10:20:00+00:00"
   }
 }
 ```
