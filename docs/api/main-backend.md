@@ -17,6 +17,9 @@
 - 매칭 결과 조회
 - 프로필별 생활 인터뷰 저장 및 조회
 - 프로필별 캐릭터 유형 산출
+- 추천 후보 간 1:1 채팅방 생성
+- 채팅방 메시지 이력 조회
+- WebSocket 실시간 채팅
 - AI 백엔드 오류를 프론트가 처리 가능한 구조로 전달
 
 ## 프론트 연동 흐름
@@ -30,6 +33,9 @@
 - 인터뷰 저장이 끝나면 추천 후보가 내부적으로 자동 계산된다.
 - 추천 후보 확인은 `GET /api/profiles/{profile_id}/recommendations`로 한다.
 - 저장된 인터뷰를 다시 불러와야 할 때는 `GET /api/profiles/{profile_id}/interview`를 사용한다.
+- 추천 후보와 대화를 시작할 때는 `POST /api/profiles/{profile_id}/chat-rooms`로 채팅방을 확보한다.
+- 기존 메시지 이력은 `GET /api/chat-rooms/{room_id}/messages`로 조회한다.
+- 실시간 메시지는 `ws://15.134.137.117/api/ws/chat-rooms/{room_id}`로 연결한다.
 
 ## 현재 구현된 엔드포인트
 
@@ -445,6 +451,172 @@
 ```json
 {
   "detail": "profile_recommendations_not_found"
+}
+```
+
+### `POST /profiles/{profile_id}/chat-rooms`
+
+- 용도: 추천 후보 또는 연결된 상대와의 1:1 채팅방 생성 또는 재사용
+- 공개 호출 예시: `POST /api/profiles/{profile_id}/chat-rooms`
+- 기능명세:
+  - 현재 사용자와 상대 프로필 조합 기준으로 채팅방을 생성한다.
+  - 같은 두 프로필 조합의 채팅방이 이미 있으면 새로 만들지 않고 기존 방을 반환한다.
+  - 참가자 순서가 바뀌어도 같은 채팅방으로 취급한다.
+- Path Variable:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| profile_id | String | 현재 사용자 프로필 ID |
+
+- Request Body 필드:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| other_profile_id | String | 상대 프로필 ID |
+
+- 요청:
+
+```json
+{
+  "other_profile_id": "profile-b2c3d4e5"
+}
+```
+
+- 성공 응답:
+
+```json
+{
+  "status": "ready",
+  "room": {
+    "room_id": "room-9b21f4cd10",
+    "participant_a_profile_id": "profile-a1b2c3d4",
+    "participant_b_profile_id": "profile-b2c3d4e5",
+    "participants": [
+      {
+        "profile_id": "profile-a1b2c3d4",
+        "nickname": "민수",
+        "gender": "male",
+        "region": "광주광역시"
+      },
+      {
+        "profile_id": "profile-b2c3d4e5",
+        "nickname": "서연",
+        "gender": "female",
+        "region": "광주광역시"
+      }
+    ],
+    "created_at": "2026-08-28T09:15:00+00:00",
+    "updated_at": "2026-08-28T09:15:00+00:00"
+  }
+}
+```
+
+### `GET /chat-rooms/{room_id}/messages`
+
+- 용도: 채팅방 메시지 이력 조회
+- 공개 호출 예시: `GET /api/chat-rooms/{room_id}/messages`
+- 기능명세:
+  - 특정 채팅방의 저장된 메시지 목록을 오래된 순서부터 반환한다.
+  - 채팅 화면 재진입 시 초기 이력 로딩에 사용한다.
+  - 실시간 연결이 끊겨도 이력 조회는 계속 사용할 수 있다.
+- Path Variable:
+
+| Key | Type | 비고 |
+| --- | --- | --- |
+| room_id | String | 채팅방 ID |
+
+- 성공 응답:
+
+```json
+{
+  "status": "ok",
+  "room": {
+    "room_id": "room-9b21f4cd10",
+    "participant_a_profile_id": "profile-a1b2c3d4",
+    "participant_b_profile_id": "profile-b2c3d4e5",
+    "participants": [
+      {
+        "profile_id": "profile-a1b2c3d4",
+        "nickname": "민수",
+        "gender": "male",
+        "region": "광주광역시"
+      },
+      {
+        "profile_id": "profile-b2c3d4e5",
+        "nickname": "서연",
+        "gender": "female",
+        "region": "광주광역시"
+      }
+    ],
+    "created_at": "2026-08-28T09:15:00+00:00",
+    "updated_at": "2026-08-28T09:20:00+00:00"
+  },
+  "messages": [
+    {
+      "message_id": "msg-a13f92bbce44",
+      "room_id": "room-9b21f4cd10",
+      "sender_profile_id": "profile-a1b2c3d4",
+      "sender_nickname": "민수",
+      "text": "안녕하세요! 반가워요.",
+      "sent_at": "2026-08-28T09:20:00+00:00"
+    }
+  ]
+}
+```
+
+- 실패 응답:
+
+```json
+{
+  "detail": "chat_room_not_found"
+}
+```
+
+### `WS /ws/chat-rooms/{room_id}`
+
+- 용도: 채팅방 실시간 메시지 송수신
+- 공개 연결 예시:
+
+```text
+ws://15.134.137.117/api/ws/chat-rooms/{room_id}?profile_id={profile_id}&nickname={nickname}
+```
+
+- 기능명세:
+  - 같은 방에 연결된 참가자에게 새 메시지를 실시간으로 전달한다.
+  - 메시지 저장 후 브로드캐스트하므로, 재접속해도 이력이 유지된다.
+  - 프론트는 연결 후 JSON 메시지를 주고받는다.
+
+- 프론트 송신 payload:
+
+```json
+{
+  "type": "send_message",
+  "text": "생활수칙 같이 정해볼까요?"
+}
+```
+
+- 서버 최초 연결 응답:
+
+```json
+{
+  "type": "connected",
+  "room_id": "room-9b21f4cd10"
+}
+```
+
+- 서버 메시지 브로드캐스트:
+
+```json
+{
+  "type": "message",
+  "message": {
+    "message_id": "msg-4b2cf1ed9a22",
+    "room_id": "room-9b21f4cd10",
+    "sender_profile_id": "profile-a1b2c3d4",
+    "sender_nickname": "민수",
+    "text": "생활수칙 같이 정해볼까요?",
+    "sent_at": "2026-08-28T09:22:00+00:00"
+  }
 }
 ```
 

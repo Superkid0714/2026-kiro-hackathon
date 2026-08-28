@@ -24,6 +24,33 @@
 
 ## 기록
 
+### 2026-08-28 — TASK-P1-09
+
+- **Agent**: Codex
+- **Task**: TASK-P1-09 추천 후보 간 실시간 채팅 기능 추가
+- **변경 파일**:
+  - `.kiro/specs/roompact-campus/requirements.md`
+  - `.kiro/specs/roompact-campus/design.md`
+  - `.kiro/specs/roompact-campus/tasks.md`
+  - `backend/src/main_backend/app.py`
+  - `backend/src/main_backend/routes/api.py`
+  - `backend/src/main_backend/routes/chat.py`
+  - `backend/src/main_backend/services/chat_service.py`
+  - `backend/src/main_backend/services/storage.py`
+  - `backend/tests/main_backend/test_chat.py`
+  - `deploy/nginx/roompact.conf`
+  - `deploy/postgres/schema.sql`
+  - `docs/api/main-backend.md`
+  - `docs/api/main-backend-openapi.json`
+  - `frontend/roomonic-nextjs/app/candidates/[id]/page.js`
+  - `frontend/roomonic-nextjs/app/chat/page.js`
+  - `frontend/roomonic-nextjs/lib/mockApi.js`
+- **테스트 결과**: PASS — `powershell -ExecutionPolicy Bypass -File .\scripts\verify.ps1`, `.\.venv\Scripts\python.exe -m pytest tests/main_backend/test_chat.py`, `npm run build`
+- **남은 작업**:
+  - EC2 `nginx`와 PostgreSQL 스키마에 이번 채팅 변경을 실제 배포 반영
+  - 프론트 전체 화면이 실제 프로필 생성 흐름과 완전히 연결되도록 나머지 목업 화면 정리
+- **비고**: 메인 백엔드가 1:1 채팅방 생성, 메시지 이력 조회, WebSocket 브로드캐스트를 담당하고 프론트 채팅 화면은 실제 API/WebSocket 연결을 사용하도록 전환함.
+
 ### 2026-08-28 — TASK-P1-08
 
 - **Agent**: Codex

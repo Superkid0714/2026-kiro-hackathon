@@ -1,0 +1,115 @@
+from __future__ import annotations
+
+import json
+
+from fastapi.testclient import TestClient
+
+from main_backend.app import app
+
+client = TestClient(app)
+
+
+def _create_profile(nickname: str) -> str:
+    response = client.post(
+        "/profiles",
+        json={
+            "nickname": nickname,
+            "age": 22,
+            "gender": "female",
+            "region": "광주광역시",
+            "move_in_period": "2026-09",
+            "stay_duration_months": 6,
+        },
+    )
+    return response.json()["profile"]["profile_id"]
+
+
+def test_create_chat_room_reuses_existing_pair() -> None:
+    first_profile = _create_profile("민수")
+    second_profile = _create_profile("서연")
+
+    first_response = client.post(
+        f"/profiles/{first_profile}/chat-rooms",
+        json={"other_profile_id": second_profile},
+    )
+    second_response = client.post(
+        f"/profiles/{second_profile}/chat-rooms",
+        json={"other_profile_id": first_profile},
+    )
+
+    assert first_response.status_code == 201
+    assert second_response.status_code == 201
+    assert first_response.json()["room"]["room_id"] == second_response.json()["room"]["room_id"]
+
+
+def test_get_chat_room_messages_returns_saved_history() -> None:
+    first_profile = _create_profile("민수")
+    second_profile = _create_profile("서연")
+    room_response = client.post(
+        f"/profiles/{first_profile}/chat-rooms",
+        json={"other_profile_id": second_profile},
+    )
+    room_id = room_response.json()["room"]["room_id"]
+
+    with client.websocket_connect(
+        f"/ws/chat-rooms/{room_id}?profile_id={first_profile}&nickname=민수"
+    ) as websocket:
+        connected_payload = json.loads(websocket.receive_text())
+        assert connected_payload["type"] == "connected"
+
+        websocket.send_text(
+            json.dumps(
+                {
+                    "type": "send_message",
+                    "text": "안녕하세요! 반가워요.",
+                },
+                ensure_ascii=False,
+            )
+        )
+        message_payload = json.loads(websocket.receive_text())
+        assert message_payload["type"] == "message"
+        assert message_payload["message"]["text"] == "안녕하세요! 반가워요."
+
+    history_response = client.get(f"/chat-rooms/{room_id}/messages")
+    body = history_response.json()
+
+    assert history_response.status_code == 200
+    assert body["status"] == "ok"
+    assert body["room"]["room_id"] == room_id
+    assert len(body["messages"]) == 1
+    assert body["messages"][0]["sender_profile_id"] == first_profile
+
+
+def test_websocket_broadcasts_to_both_participants() -> None:
+    first_profile = _create_profile("민수")
+    second_profile = _create_profile("서연")
+    room_id = client.post(
+        f"/profiles/{first_profile}/chat-rooms",
+        json={"other_profile_id": second_profile},
+    ).json()["room"]["room_id"]
+
+    with client.websocket_connect(
+        f"/ws/chat-rooms/{room_id}?profile_id={first_profile}&nickname=민수"
+    ) as first_socket, client.websocket_connect(
+        f"/ws/chat-rooms/{room_id}?profile_id={second_profile}&nickname=서연"
+    ) as second_socket:
+        json.loads(first_socket.receive_text())
+        json.loads(second_socket.receive_text())
+
+        first_socket.send_text(
+            json.dumps(
+                {
+                    "type": "send_message",
+                    "text": "생활수칙 같이 정해볼까요?",
+                },
+                ensure_ascii=False,
+            )
+        )
+
+        first_message = json.loads(first_socket.receive_text())
+        second_message = json.loads(second_socket.receive_text())
+
+    assert first_message["type"] == "message"
+    assert second_message["type"] == "message"
+    assert first_message["message"]["message_id"] == second_message["message"]["message_id"]
+    assert second_message["message"]["sender_nickname"] == "민수"

@@ -353,6 +353,25 @@
     - 지역 불일치 강한 감점 테스트
     - 추천 API 문서 갱신 확인
 
+- [ ] TASK-P1-09 추천 후보 간 실시간 채팅 기능을 추가한다
+  - Status: DONE
+  - Owner: Codex
+  - Requirement: FR-01.8, FR-01.9, FR-08.9, FR-08.10, FR-10.8, FR-10.9, FR-11.8, NFR-11
+  - File Scope: `backend/src/main_backend/routes/*`, `backend/src/main_backend/services/*`, `backend/tests/*`, `deploy/postgres/*`, `deploy/nginx/*`, `frontend/roomonic-nextjs/app/*`, `frontend/roomonic-nextjs/lib/*`, `docs/api/*`
+  - Depends on: TASK-P1-04, TASK-P1-05, TASK-P1-07
+  - Acceptance:
+    - 메인 백엔드는 두 프로필 조합 기준의 1:1 채팅방 생성 API를 제공해야 한다.
+    - 메인 백엔드는 채팅방 메시지 이력 조회 API를 제공해야 한다.
+    - 메인 백엔드는 WebSocket 연결을 통해 같은 채팅방 참가자에게 실시간 메시지를 브로드캐스트해야 한다.
+    - 같은 두 프로필 조합으로 중복 채팅방이 생성되지 않아야 한다.
+    - 프론트 채팅 페이지가 더미 API 대신 실제 HTTP/WebSocket으로 동작해야 한다.
+  - Verify:
+    - 채팅방 생성/재사용 테스트
+    - 메시지 이력 저장/조회 테스트
+    - WebSocket 송수신 테스트
+    - nginx WebSocket 프록시 설정 확인
+    - 프론트 채팅 페이지 실제 API 연동 확인
+
 ## 작업 순서 가이드
 
 - `TASK-P0-01`과 `TASK-P0-02`로 두 서버를 먼저 띄운다.
@@ -375,3 +394,4 @@
 - Self Review: TASK-P1-06 완료. 인터뷰, 캐릭터, 지역, 입주 시기 기반의 정밀 매칭 점수 계산과 세션 확장 payload, 통합 테스트를 추가했다.
 - Self Review: TASK-P1-07 완료. 인터뷰 저장 시 자동 추천 후보를 계산하고, 기존 제출자 추천까지 함께 갱신하는 양방향 추천 API와 저장 구조를 추가했다.
 - Self Review: TASK-P1-08 완료. 지역 불일치 감점을 `-30`으로 강화해 같은 생활 패턴이어도 생활권 차이가 추천 우선순위에 크게 반영되도록 조정했다.
+- Self Review: TASK-P1-09 완료. 추천 후보 간 1:1 채팅방 생성, 메시지 이력 저장, WebSocket 실시간 전달, 프론트 채팅 화면 실연동을 추가했다.

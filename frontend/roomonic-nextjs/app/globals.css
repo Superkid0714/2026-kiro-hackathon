@@ -1,0 +1,53 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: .5; }
+  50% { opacity: 1; }
+}
+.input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 13px;
+  border: 1.5px solid #E8E4FA;
+  font-size: 13.5px;
+  background: #fff;
+  font-family: inherit;
+  color: #2A2450;
+}
+.input:focus {
+  outline: none;
+  border-color: #5B4FCF;
+}
+
+.stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .8;
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 40px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 90px 90px, #fff, transparent),
+    radial-gradient(1px 1px at 150px 30px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 220px 120px, #fff, transparent),
+    radial-gradient(1px 1px at 60px 160px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 270px 200px, #fff, transparent),
+    radial-gradient(1.5px 1.5px at 310px 260px, #fff, transparent);
+  animation: twinkle 2.4s ease-in-out infinite;
+}

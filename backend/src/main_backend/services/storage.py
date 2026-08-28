@@ -42,6 +42,16 @@ class StorageBackend(Protocol):
 
     def get_result(self, session_id: str) -> dict[str, Any] | None: ...
 
+    def save_chat_room(self, room: dict[str, Any]) -> None: ...
+
+    def find_chat_room(self, participant_a: str, participant_b: str) -> dict[str, Any] | None: ...
+
+    def get_chat_room(self, room_id: str) -> dict[str, Any] | None: ...
+
+    def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None: ...
+
+    def list_chat_messages(self, room_id: str) -> list[dict[str, Any]]: ...
+
 
 @dataclass
 class LocalJsonStorage:
@@ -129,6 +139,44 @@ class LocalJsonStorage:
             result = payload["results"].get(session_id)
             return deepcopy(result) if result is not None else None
 
+    def save_chat_room(self, room: dict[str, Any]) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["chat_rooms"][room["room_id"]] = deepcopy(room)
+            self._write(payload)
+
+    def find_chat_room(self, participant_a: str, participant_b: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            for room in payload["chat_rooms"].values():
+                if (
+                    room["participant_a_profile_id"] == participant_a
+                    and room["participant_b_profile_id"] == participant_b
+                ):
+                    return deepcopy(room)
+            return None
+
+    def get_chat_room(self, room_id: str) -> dict[str, Any] | None:
+        with self._lock:
+            payload = self._read()
+            room = payload["chat_rooms"].get(room_id)
+            return deepcopy(room) if room is not None else None
+
+    def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None:
+        with self._lock:
+            payload = self._read()
+            payload["chat_messages"].setdefault(room_id, [])
+            payload["chat_messages"][room_id].append(deepcopy(message))
+            room = payload["chat_rooms"].get(room_id)
+            if room is not None:
+                room["updated_at"] = message["sent_at"]
+            self._write(payload)
+
+    def list_chat_messages(self, room_id: str) -> list[dict[str, Any]]:
+        with self._lock:
+            payload = self._read()
+            return deepcopy(payload["chat_messages"].get(room_id, []))
+
     def _read(self) -> dict[str, dict[str, Any]]:
         if not self.path.exists():
             return {
@@ -137,6 +185,8 @@ class LocalJsonStorage:
                 "recommendations": {},
                 "sessions": {},
                 "results": {},
+                "chat_rooms": {},
+                "chat_messages": {},
             }
 
         with self.path.open("r", encoding="utf-8") as handle:
@@ -148,6 +198,8 @@ class LocalJsonStorage:
             "recommendations": content.get("recommendations", {}),
             "sessions": content.get("sessions", {}),
             "results": content.get("results", {}),
+            "chat_rooms": content.get("chat_rooms", {}),
+            "chat_messages": content.get("chat_messages", {}),
         }
 
     def _write(self, payload: dict[str, dict[str, Any]]) -> None:
@@ -277,6 +329,65 @@ class DynamoDbStorage:
         response = self._table.get_item(Key={"pk": session_id, "sk": "MATCH_RESULT"})
         item = response.get("Item")
         return deepcopy(item["payload"]) if item is not None else None
+
+    def save_chat_room(self, room: dict[str, Any]) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"CHATROOM#{room['room_id']}",
+                "ROOM",
+                room,
+                "active",
+            )
+        )
+
+    def find_chat_room(self, participant_a: str, participant_b: str) -> dict[str, Any] | None:
+        response = self._table.scan(
+            FilterExpression=(
+                "#sk = :room AND participant_a_profile_id = :a "
+                "AND participant_b_profile_id = :b"
+            ),
+            ExpressionAttributeNames={"#sk": "sk"},
+            ExpressionAttributeValues={
+                ":room": "ROOM",
+                ":a": participant_a,
+                ":b": participant_b,
+            },
+        )
+        items = response.get("Items", [])
+        if not items:
+            return None
+        return deepcopy(items[0]["payload"])
+
+    def get_chat_room(self, room_id: str) -> dict[str, Any] | None:
+        response = self._table.get_item(Key={"pk": f"CHATROOM#{room_id}", "sk": "ROOM"})
+        item = response.get("Item")
+        return deepcopy(item["payload"]) if item is not None else None
+
+    def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None:
+        self._table.put_item(
+            Item=self._item(
+                f"CHATROOM#{room_id}",
+                f"MESSAGE#{message['message_id']}",
+                message,
+                "sent",
+            )
+        )
+        room = self.get_chat_room(room_id)
+        if room is not None:
+            room["updated_at"] = message["sent_at"]
+            self.save_chat_room(room)
+
+    def list_chat_messages(self, room_id: str) -> list[dict[str, Any]]:
+        response = self._table.query(
+            KeyConditionExpression="pk = :pk AND begins_with(sk, :prefix)",
+            ExpressionAttributeValues={
+                ":pk": f"CHATROOM#{room_id}",
+                ":prefix": "MESSAGE#",
+            },
+        )
+        items = response.get("Items", [])
+        items.sort(key=lambda item: item["payload"]["sent_at"])
+        return [deepcopy(item["payload"]) for item in items]
 
     @staticmethod
     def _item(
@@ -487,6 +598,92 @@ class PostgresStorage:
             )
             row = cursor.fetchone()
             return deepcopy(row["payload"]) if row is not None else None
+
+    def save_chat_room(self, room: dict[str, Any]) -> None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO chat_rooms (
+                    room_id, participant_a_profile_id, participant_b_profile_id, payload,
+                    created_at, updated_at
+                )
+                VALUES (%s, %s, %s, %s::jsonb, %s, %s)
+                ON CONFLICT (room_id) DO UPDATE SET
+                    payload = EXCLUDED.payload,
+                    updated_at = EXCLUDED.updated_at
+                """,
+                (
+                    room["room_id"],
+                    room["participant_a_profile_id"],
+                    room["participant_b_profile_id"],
+                    json.dumps(room, ensure_ascii=False),
+                    room["created_at"],
+                    room["updated_at"],
+                ),
+            )
+
+    def find_chat_room(self, participant_a: str, participant_b: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                """
+                SELECT payload
+                FROM chat_rooms
+                WHERE participant_a_profile_id = %s AND participant_b_profile_id = %s
+                """,
+                (participant_a, participant_b),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def get_chat_room(self, room_id: str) -> dict[str, Any] | None:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                "SELECT payload FROM chat_rooms WHERE room_id = %s",
+                (room_id,),
+            )
+            row = cursor.fetchone()
+            return deepcopy(row["payload"]) if row is not None else None
+
+    def save_chat_message(self, room_id: str, message: dict[str, Any]) -> None:
+        with self._cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO chat_messages (
+                    message_id, room_id, sender_profile_id, payload, created_at
+                )
+                VALUES (%s, %s, %s, %s::jsonb, %s)
+                """,
+                (
+                    message["message_id"],
+                    room_id,
+                    message["sender_profile_id"],
+                    json.dumps(message, ensure_ascii=False),
+                    message["sent_at"],
+                ),
+            )
+            cursor.execute(
+                """
+                UPDATE chat_rooms
+                SET updated_at = %s,
+                    payload = jsonb_set(payload, '{updated_at}', to_jsonb(%s::text), true)
+                WHERE room_id = %s
+                """,
+                (message["sent_at"], message["sent_at"], room_id),
+            )
+
+    def list_chat_messages(self, room_id: str) -> list[dict[str, Any]]:
+        with self._cursor(row_factory="dict") as cursor:
+            cursor.execute(
+                """
+                SELECT payload
+                FROM chat_messages
+                WHERE room_id = %s
+                ORDER BY created_at ASC, message_id ASC
+                """,
+                (room_id,),
+            )
+            rows = cursor.fetchall()
+            return [deepcopy(row["payload"]) for row in rows]
 
     @contextmanager
     def _cursor(self, row_factory: str | None = None) -> Iterator[Any]:
